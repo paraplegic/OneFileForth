@@ -13,6 +13,7 @@
 ##
 
 SRC=MiniForth.c
+OBJ=mff forth
 FAST=-D NOCHECK
 OS=(shell uname -s)
 LD=-ldl
@@ -25,7 +26,7 @@ PLTFM:=FreeBSD
 CC=clang
 #endif
 
-all:	mff forth
+all:	$(OBJ)
 
 mff:	$(SRC)
 	@echo "Building for $(PLTFM)"
@@ -35,5 +36,4 @@ forth:	$(SRC)
 	$(CC) -o $@ $(LD) $(SRC)
 
 clean:
-	rm -rf ./mff
-	rm -rf ./forth
+	rm -rf $(OBJ)
