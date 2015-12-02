@@ -27,12 +27,12 @@ CC=clang
 
 all:	mff forth
 
-mff:	MiniForth.c
+mff:	$(SRC)
 	@echo "Building for $(PLTFM)"
-	$(CC) -o $@ $(FAST) $(LD) MiniForth.c
+	$(CC) -o $@ $(FAST) $(LD) $(SRC)
 
-forth:	MiniForth.c
-	$(CC) -o $@ $(LD) MiniForth.c
+forth:	$(SRC)
+	$(CC) -o $@ $(LD) $(SRC)
 
 clean:
 	rm -rf ./mff
