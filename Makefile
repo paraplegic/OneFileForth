@@ -6,16 +6,33 @@
 ## -D NOCHEK set on the compile line ... for time
 ## sensitive applications ...
 ##
+
+##
+## This makefile should work for either BSD Make, or
+## gnu Make (gmake on BSD), and compile/link accordingly.
+##
+
 SRC=MiniForth.c
-FAST="-D NOCHECK"
+FAST=-D NOCHECK
+OS=(shell uname -s)
+LD=-ldl
+PLTFM=Linux
+CC=gcc
+
+#ifeq( $(OS), "FreeBSD" )
+LD:=
+PLTFM:=FreeBSD
+CC=clang
+#endif
 
 all:	mff forth
 
 mff:	MiniForth.c
-	$(CC) -o $@ $(FAST) MiniForth.c
+	@echo "Building for $(PLTFM)"
+	$(CC) -o $@ $(FAST) $(LD) MiniForth.c
 
 forth:	MiniForth.c
-	$(CC) -o $@ MiniForth.c
+	$(CC) -o $@ $(LD) MiniForth.c
 
 clean:
 	rm -rf ./mff
