@@ -1,3 +1,11 @@
+##
+## Trivial makefile for the OneFileForth project
+## By default creates a "safe" interpreter (forth)
+## which checks stack depth on all (?) primitives.
+## In addition the mff executable is generated with
+## -D NOCHEK set on the compile line ... for time
+## sensitive applications ...
+##
 SRC=MiniForth.c
 FAST="-D NOCHECK"
 
