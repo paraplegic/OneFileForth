@@ -16,24 +16,24 @@ SRC=MiniForth.c
 OBJ=mff forth
 FAST=-D NOCHECK
 OS=(shell uname -s)
-LD=-ldl
-PLTFM=Linux
+LDOPTS=-ldl
+PLATFORM=Linux
 CC=gcc
 
 #ifeq( $(OS), "FreeBSD" )
-LD:=
-PLTFM:=FreeBSD
+LDOPTS:=
+PLATFORM:=FreeBSD
 CC=clang
 #endif
 
 all:	$(OBJ)
 
 mff:	$(SRC)
-	@echo "Building for $(PLTFM)"
-	$(CC) -o $@ $(FAST) $(LD) $(SRC)
+	@echo "Building for $(PLATFORM)"
+	$(CC) -o $@ $(FAST) $(LDOPTS) $(SRC)
 
 forth:	$(SRC)
-	$(CC) -o $@ $(LD) $(SRC)
+	$(CC) -o $@ $(LDOPTS) $(SRC)
 
 clean:
 	rm -rf $(OBJ)
