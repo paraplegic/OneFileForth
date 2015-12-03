@@ -247,6 +247,7 @@ void modulo();
 void dotS(); 
 void dot(); 
 void udot(); 
+void bye(); 
 void prompt(); 
 void words(); 
 void depth(); 
@@ -409,7 +410,7 @@ Dict_t Primitives[] = {
   { dotS,	".s", Normal, NULL },
   { dot,	".", Normal, NULL },
   { udot,	"u.", Normal, NULL },
-  { exit,	"bye", Normal, NULL },
+  { bye,	"bye", Normal, NULL },
   { words,	"words", Normal, NULL },
   { depth,	"depth", Normal, NULL },
   { dupe,	"dup", Normal, NULL },
@@ -1255,6 +1256,10 @@ void udot(){
   outp( OUTPUT, (Str_t) tmp_buffer, n ) ;
 }
 
+void bye(){
+  exit( error_code ) ;
+}
+
 void words(){
   Dict_t *p ;
   Cell_t i ;
@@ -1632,7 +1637,7 @@ void catch(){
  die:
   sz = fmt( "-- Terminated.\n" ) ;
   outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
-  exit( 1 ) ;
+  exit( error_code ) ;
 }
 
 void wrd_fetch(){

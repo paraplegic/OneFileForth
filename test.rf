@@ -1,0 +1,67 @@
+.( ::: Test file for One File Forth ::: ) cr
+
+1 constant on
+0 constant off
+
+1024 dup * constant 1Meg
+
+: set_trace trace ! ;
+: operations begin dup while -- repeat drop ;
+
+noops 1Meg dup . ." contrived operations " utime swap operations utime swap -
+ops . ." forth operations in " . ." microseconds" cr
+
+.( ::: code decompiled ::: ) cr
+' operations see 
+
+.( ::: tracing 10 operations [indefinite loop] ::: ) cr
+on set_trace
+10 operations
+off set_trace
+
+.( ::: testing definite loop ::: ) cr
+: tstdo 0 do loop ;
+noops 1Meg dup . ." do loop operations " utime swap tstdo utime swap -
+ops . ." forth operations in " . ." microseconds" cr
+
+.( ::: code decompiled ::: ) cr
+' tstdo see 
+
+.( ::: tracing 10 do loop iterations ::: ) cr
+on set_trace
+10 tstdo
+off set_trace
+
+.( ::: arithmetic tests ::: ) cr
+." addition: 3 == " 1 2 + . cr
+." subraction: 0 == " 2 2 - . cr
+." multiplication: 81 == " 9 9 * . cr
+." division: 4 == " 12 3 / . cr
+
+.( ::: spinning with i/o [expensive] 1Meg times => ) cr
+: sspin 0 do spin loop ;
+utime 1Meg sspin utime swap - ops . ." forth operations in " . .( microseconds ) cr
+
+.( ::: stack tests ::: ) cr 
+1 2 3 4 5
+.( ::: stack depth is ) depth . cr
+.( ::: stack view is ) .s .( ::: )  cr 
+.( ::: clear stack by printing ::: ) cr
+. . . . . cr
+
+.( ::: loop backwards by 2 ::: ) cr
+: bkw 0 100 do i . -2 +loop ;
+bkw cr
+
+.( ::: loop forwards by 2 ::: ) cr
+: fwd 100 0 do i . 2 +loop ;
+fwd cr
+
+.( ::: conditional tests [modulo 5] ::: ) cr 
+: conditional 0 do i 5 % if 46 emit else i . then loop ; 
+100 conditional cr
+
+.( ::: word list ::: ) cr words cr
+.( ::: end of tests ::: ) cr
+
+bye

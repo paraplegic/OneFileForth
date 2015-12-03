@@ -35,5 +35,10 @@ mff:	$(SRC)
 forth:	$(SRC)
 	$(CC) -o $@ $(LDOPTS) $(SRC)
 
-clean:
+clean:	$(OBJ)
 	rm -rf $(OBJ)
+
+test:	test.rf $(OBJ)
+	./mff -i test.rf 
+	@echo "$?"
+
