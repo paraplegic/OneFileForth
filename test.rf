@@ -2,17 +2,24 @@
 
 1 constant on
 0 constant off
-
 1024 dup * constant 1Meg
-
 : set_trace trace ! ;
-: operations begin dup while -- repeat drop ;
 
-noops 1Meg dup . ." contrived operations " utime swap operations utime swap -
+.( ::: Loop test 1 begin-while-repeat ::: ) cr
+: operations begin dup while -- repeat drop ;
+noops 1Meg dup . ." loop operations " utime swap operations utime swap -
 ops . ." forth operations in " . ." microseconds" cr
 
 .( ::: code decompiled ::: ) cr
 ' operations see 
+
+
+.( ::: Loop test 2 begin-again ::: ) cr
+: fast 1Meg begin -- dup 0 == if drop leave then again ; 
+noops 1Meg . ." loop operations in " utime fast utime ops . ." forth operations in " swap - . ." microseconds " cr
+
+.( ::: code decompiled ::: ) cr
+' fast see
 
 .( ::: tracing 10 operations [indefinite loop] ::: ) cr
 on set_trace

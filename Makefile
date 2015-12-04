@@ -40,5 +40,3 @@ clean:	$(OBJ)
 
 test:	test.rf $(OBJ)
 	./mff -i test.rf 
-	@echo "$?"
-
