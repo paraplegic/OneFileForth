@@ -42,3 +42,6 @@ clean:	$(OBJ)
 test:	test.rf $(OBJ)
 	./mff -i test.rf 
 	./forth -i test.rf 
+
+status:	clean
+	git status
