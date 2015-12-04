@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"28"
+#define REVISION	"29"
 
 #include <stdlib.h>
 #include <stdarg.h>
@@ -300,6 +300,8 @@ void decimal() ;
 void hex() ;
 void sigvar() ;
 void errvar() ;
+void errval() ;
+void errstr() ;
 void base() ;
 void trace() ;
 void resetter() ;
@@ -352,6 +354,8 @@ void ssave();
 void unssave();
 void infile();
 void outfile();
+void closeout();
+void isfile();
 void sndtty();
 void rcvtty();
 void opentty();
@@ -462,7 +466,9 @@ Dict_t Primitives[] = {
   { base,	"base", Normal, NULL },
   { trace,	"trace", Normal, NULL },
   { sigvar,	"sigval", Normal, NULL },
-  { errvar,	"errval", Normal, NULL },
+  { errvar,	"errvar", Normal, NULL },
+  { errval,	"errval", Normal, NULL },
+  { errstr,	"errstr", Normal, NULL },
   { resetter,	"reset", Normal, NULL },
   { see,	"see", Normal, NULL },
   { pushPfa,	"(variable)", Normal, NULL },
@@ -511,6 +517,8 @@ Dict_t Primitives[] = {
   { unssave,	"unsave", Normal, NULL },
   { infile,	"infile", Normal, NULL },
   { outfile,	"outfile", Normal, NULL },
+  { closeout,	"closeout", Normal, NULL },
+  { isfile,	"isfile", Normal, NULL },
   { opentty,	"opentty", Normal, NULL },
   { closetty,	"closetty", Normal, NULL },
   { sndtty,	"sndtty", Normal, NULL },
@@ -2282,6 +2290,16 @@ void errvar(){
   push( (Cell_t) &error_code ); 
 }
 
+void errval(){
+  errvar();
+  wrd_fetch();
+}
+
+void errstr(){
+  register Cell_t err = pop() ;
+  push( errors[ err ] ) ;
+}
+
 void trace(){
   push( (Cell_t) &Trace ); 
 }
@@ -2549,8 +2567,8 @@ void infile(){
 
 void outfile(){
   Str_t fn ;
-  Cell_t fd ;
-  uCell_t fflg = O_CREAT | O_TRUNC | O_RDWR | O_APPEND ;
+  Cell_t fd, fexists ;
+  uCell_t fflg = O_CREAT | O_RDWR | O_APPEND ;
 
   fn = (Str_t) pop() ;
 #ifdef HOSTED
@@ -2573,6 +2591,25 @@ void outfile(){
     out_This-- ;
   }
 #endif
+}
+
+void closeout(){
+  if( OUTPUT > 1 ){
+    close( OUTPUT ) ;
+    out_This-- ;
+  }
+}
+
+void isfile(){
+  struct stat sbuf ;
+  Cell_t rv ;
+  Str_t fn = (Str_t) pop() ;
+
+  if( !isNul( fn ) )
+  {
+    rv = stat( (const Str_t ) fn, &sbuf ) ;
+  }
+  push( (rv == 0) ? 1 : 0 ) ; 
 }
 
 Wrd_t outp( Wrd_t fd, Str_t buf, Wrd_t len ){

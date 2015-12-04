@@ -37,6 +37,8 @@ forth:	$(SRC)
 
 clean:	$(OBJ)
 	rm -rf $(OBJ)
+	rm -rf test.log
 
 test:	test.rf $(OBJ)
 	./mff -i test.rf 
+	./forth -i test.rf 
