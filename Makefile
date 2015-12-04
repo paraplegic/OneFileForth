@@ -35,7 +35,7 @@ mff:	$(SRC)
 forth:	$(SRC)
 	$(CC) -o $@ $(LDOPTS) $(SRC)
 
-clean:	$(OBJ)
+clean:
 	rm -rf $(OBJ)
 	rm -rf test.log
 
