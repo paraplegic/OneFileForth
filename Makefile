@@ -39,7 +39,7 @@ clean:
 	rm -rf $(OBJ)
 	rm -rf test.log
 
-test:	test.rf $(OBJ)
+test:	$(OBJ) test.rf
 	./mff -i test.rf 
 	./forth -i test.rf 
 
