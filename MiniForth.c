@@ -311,6 +311,7 @@ void does() ;
 void allot() ;
 void create() ;
 void constant() ;
+void variable() ;
 void pvState() ;
 void imState() ;
 void normal() ;
@@ -476,6 +477,7 @@ Dict_t Primitives[] = {
   { create,	"create", Normal, NULL },
   { does,	"does>", Normal, NULL },
   { constant,	"constant", Normal, NULL },
+  { variable,	"variable", Normal, NULL },
   { normal,	"normal", Normal, NULL },
   { immediate,	"immediate", Normal, NULL },
   { imState,	"[", Immediate, NULL },
@@ -2084,12 +2086,21 @@ void doConstant(){
 }
 
 void constant(){
-  Dict_t *dp ;
 
   create() ;
   comma() ;
-  dp = &Colon_Defs[n_ColonDefs-1] ;
+
+  Dict_t *dp = &Colon_Defs[n_ColonDefs-1] ;
   dp ->cfa = doConstant ;
+}
+
+void variable(){
+
+  create();
+
+  Dict_t *dp = &Colon_Defs[n_ColonDefs-1] ;
+  dp ->cfa = pushPfa ;
+  
 }
 
 void colon(){
