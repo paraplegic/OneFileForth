@@ -2097,6 +2097,8 @@ void constant(){
 void variable(){
 
   create();
+  push( 0 ) ; 
+  comma() ;
 
   Dict_t *dp = &Colon_Defs[n_ColonDefs-1] ;
   dp ->cfa = pushPfa ;
@@ -2450,7 +2452,7 @@ void waitrdy(){		/* ( fd secs usecs -- flag ) */
 
   tmo.tv_sec = secs ;
   tmo.tv_usec = usecs ;
-  rv = select( 1, &fds, NULL, NULL, &tmo ) ;  
+  rv = select( fd+1, &fds, NULL, NULL, &tmo ) ;  
   if( rv < 0 ){
     throw( err_SysCall ) ;
   }
@@ -2478,6 +2480,9 @@ Wrd_t getstr( Wrd_t fd, Str_t buf, Wrd_t len ){
   i = 0 ; 
   do {
     n = inp( fd, (Str_t) &ch, 1 ) ;
+    if( n == 0 ){
+      return i ;
+    }
     if( n < 1 ){
       if( errno != EAGAIN ){
        throw( err_SysCall ) ;
@@ -2504,7 +2509,7 @@ void rcvtty(){	/* ( fd n -- buf n ) */
 
   n = pop() ;
   fd = pop() ;
-  pad() ; buf = (Str_t) pop() ;
+  here() ; buf = (Str_t) pop() ;
   nr = getstr( fd, buf, n ) ;
   push( (Cell_t) buf ) ;
   if( nr > 0 ){

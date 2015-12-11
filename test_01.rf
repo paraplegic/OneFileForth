@@ -1,0 +1,59 @@
+.( ::: loading library interface ::: ) cr 
+
+: load dlopen constant ;					( <str> | NULL -- creates lib ptr )
+: entry dlsym dup 0 == if dlerror type cr then ;		( <lib> <str> -- <ptr> looks up a symbol in library )
+: code create , , does> dup @ swap 1 cells + @ native ; 	( ptr n -- creates new forth word to call C code )
+: .sep ." -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=" cr ;
+: .sd cr .sep . ." :::" .s cr .sep ; 
+: .space 32 emit ;
+: showkeys begin key dup ascii x == if . ." Exit" cr leave then . begin ?key while key . repeat again ;
+: times 0 begin over over - while 3 pick execute ++ repeat drop drop drop ; ( xt n -- )
+
+.( ::: pass a path or NULL to load ::: ) cr
+.( ::: NULL means loading libc library as _libc ::: ) cr
+0 load _libc
+
+.( ::: perform entry lookups on local text ::: ) cr
+_libc " getuid"		entry 0 code uid
+_libc " getgid"		entry 0 code gid 
+_libc " time"		entry 1 code tick
+_libc " clock"		entry 0 code clock
+_libc " calloc" 	entry 2 code allocate
+_libc " free" 		entry 1 code free
+_libc " system" 	entry 1 code shell 
+_libc " gettimeofday"	entry 2 code tod 
+_libc " getenv"		entry 1 code env 
+_libc " popen"		entry 2 code popen
+_libc " pclose"		entry 1 code pclose
+_libc " fileno"		entry 1 code fileno
+
+
+uid .
+gid .
+0 tick . cr
+
+" USER" env type cr
+
+: .uid uid . ; 
+' .uid 10 times cr
+
+.( ::: create string constants for later use ::: ) cr
+" /bin/ls /tmp" save constant ls
+" r" save constant read_only
+
+: get_io  ( fd -- )
+   begin
+    dup 0 10000 waitrdy if  	( wait 0 seconds and 10000 usecs for i/o )
+          dup 1000 rcvtty if	( receive up to 1000 characters )
+              type cr		( just output it for now )
+          else
+              ." <EOF> on input" cr pclose drop leave
+          then 
+    then
+   again
+;
+
+.( ::: open a pipe to the ls command ::: ) cr
+0 trace !
+ls read_only popen fileno get_io cr
+bye

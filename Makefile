@@ -39,9 +39,11 @@ clean:
 	rm -rf $(OBJ)
 	rm -rf test.log
 
-test:	$(OBJ) test.rf
-	./mff -i test.rf 
-	./forth -i test.rf 
+test:	$(OBJ) test_00.rf
+	./mff -i test_00.rf 
+	./mff -i test_01.rf
+	./forth -i test_00.rf 
+	./forth -i test_01.rf
 
 status:	clean
 	git status
