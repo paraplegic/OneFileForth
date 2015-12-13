@@ -2512,11 +2512,7 @@ void rcvtty(){	/* ( fd n -- buf n ) */
   here() ; buf = (Str_t) pop() ;
   nr = getstr( fd, buf, n ) ;
   push( (Cell_t) buf ) ;
-  if( nr > 0 ){
-    push( (Cell_t) nr ) ;
-    return ;
-  } 
-  push( 0 ) ; 
+  push( (Cell_t) nr ) ;
   return ;
 }
 
@@ -2640,7 +2636,6 @@ Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
 Wrd_t read( Wrd_t fd, Str_t buf, Wrd_t len ) {}
 Wrd_t write( Wrd_t fd, Str_t buf, Wrd_t len ) {}
 #endif
-
 
 #ifdef HOSTED 
 void qdlopen(){
