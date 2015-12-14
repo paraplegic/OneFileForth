@@ -109,10 +109,10 @@ set_log
 clr_log
 done
 
-.( ::: found in comp.lang.forth ::: ) cr
+.( ::: found in comp.lang.forth for Rod and Chris ::: )
 : ?dup dup 0 == if leave then dup ; 
 : test begin ?dup if -- else leave then again ;
-utime 1Meg 10 * test utime swap - .
+utime 1Meg 10 * test utime swap - . ." u-secs" cr 
 
 .( ::: word list ::: ) 
 set_log words clr_log done cr
