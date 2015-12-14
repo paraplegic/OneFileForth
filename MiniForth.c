@@ -252,6 +252,7 @@ void prompt();
 void words(); 
 void depth(); 
 void dupe(); 
+void qdupe(); 
 void drop(); 
 void over(); 
 void swap(); 
@@ -419,6 +420,7 @@ Dict_t Primitives[] = {
   { words,	"words", Normal, NULL },
   { depth,	"depth", Normal, NULL },
   { dupe,	"dup", Normal, NULL },
+  { qdupe,	"?dup", Normal, NULL },
   { drop,	"drop", Normal, NULL },
   { over,	"over", Normal, NULL },
   { swap,	"swap", Normal, NULL },
@@ -1509,6 +1511,17 @@ void dupe(){
   chk( 1 ) ; 
   n = *tos;
   push( n ) ;
+}
+
+void qdupe(){
+  register Cell_t n ;
+
+  chk( 1 ) ; 
+  if ( *tos )
+  {
+    n = *tos;
+    push( n ) ;
+  }
 }
 
 void drop(){

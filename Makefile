@@ -19,23 +19,25 @@ OS=(shell uname -s)
 LDOPTS=-ldl
 PLATFORM=Linux
 CC=gcc
-CCOPT=-O2
+CCOPT=-O3
 
 #ifeq( $(OS), "FreeBSD" )
 LDOPTS:=
 PLATFORM:=FreeBSD
 CC=clang
-CCOPT=-O2
+CCOPT=-O3
 #endif
 
 all:	$(OBJ)
 
 mff:	$(SRC)
 	@echo "Building for $(PLATFORM)"
-	$(CC) -o $@ $(FAST) $(LDOPTS) $(SRC)
+	$(CC) $(CCOPT) -o $@ $(FAST) $(LDOPTS) $(SRC)
+	size $@
 
 forth:	$(SRC)
-	$(CC) -o $@ $(LDOPTS) $(SRC)
+	$(CC) $(CCOPT) -o $@ $(LDOPTS) $(SRC)
+	size $@
 
 clean:
 	rm -rf $(OBJ)
