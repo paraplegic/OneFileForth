@@ -19,13 +19,13 @@ OS=(shell uname -s)
 LDOPTS=-ldl
 PLATFORM=Linux
 CC=gcc
-CCOPT=
+CCOPT=-O2
 
 #ifeq( $(OS), "FreeBSD" )
 LDOPTS:=
 PLATFORM:=FreeBSD
 CC=clang
-CCOPT=
+CCOPT=-O2
 #endif
 
 all:	$(OBJ)
