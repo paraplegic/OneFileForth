@@ -8,7 +8,7 @@
   smaller end.
 
   Written by Robert S. Sciuk of Control-Q Research 
-  Copyright 1982 - 2015.
+  Copyright 1982 - 2016.
 
   LICENSE:
 
