@@ -16,15 +16,16 @@ SRC=MiniForth.c
 OBJ=mff forth
 FAST=-D NOCHECK
 OS=(shell uname -s)
-LDOPTS=-ldl
-PLATFORM=Linux
-CC=gcc
-CCOPT=-O3
 
 #ifeq( $(OS), "FreeBSD" )
 LDOPTS:=
 PLATFORM:=FreeBSD
 CC=clang
+CCOPT=-O3
+#else
+LDOPTS=-ldl
+PLATFORM=Linux
+CC=gcc
 CCOPT=-O3
 #endif
 
@@ -51,3 +52,6 @@ test:	$(OBJ) test_00.rf
 
 status:	clean
 	git status
+
+install: $(OBJ)
+	cp $(OBJ) /usr/local/bin
