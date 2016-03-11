@@ -2,8 +2,9 @@
 
 0 constant off
 1 constant on
-
-: code_trace trace ! ( flg -- ) ;
+: code_trace ( flg -- )
+  trace ! 
+;
 
 : load dlopen constant ;					( <str> | NULL -- creates lib ptr )
 : entry dlsym dup 0 == if dlerror type cr then ;		( <lib> <str> -- <ptr> looks up a symbol in library )
@@ -39,7 +40,10 @@ gid .
 
 " USER" env type cr
 
-: .uid uid . ; 
+: .uid ( -- )
+  uid . 
+; 
+
 ' .uid 10 times cr
 
 .( ::: create string constants for later use ::: ) cr

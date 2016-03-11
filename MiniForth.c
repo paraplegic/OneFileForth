@@ -396,12 +396,12 @@ typedef enum {
   Normal,
   Immediate,
   Undefined
-} Flg_t ;
+} Flag_t ;
 
 typedef struct _dict_ {
   Fptr_t  cfa ;
   Str_t   nfa ;
-  Flg_t	  flg ;
+  Flag_t  flg ;
   Cell_t  *pfa ;
 } Dict_t ;
 
