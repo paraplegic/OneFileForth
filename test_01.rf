@@ -9,16 +9,6 @@
 : showkeys begin key dup ascii x == if . ." Exit" cr leave then . begin ?key while key . repeat again ;
 : times 0 begin over over - while 3 pick execute ++ repeat drop drop drop ; ( xt n -- )
 
-: dump ( xt -- )
-   ." dump: " dup >name type cr  			( xt -- xt )
-   >body begin 						( xt -- pfa )
-          dup @ if 
-             dup . dup @ . cr 1 cells + 	( pfa -- pfa++ )
-          else
-             leave
-          then
-    repeat drop ;
-
 .( ::: pass a path or NULL to load ::: ) cr
 .( ::: NULL means loading libc library as _libc ::: ) cr
 0 load _libc
@@ -63,9 +53,9 @@ gid .
    again
 ;
 
-.( ::: open a pipe to the ls command ::: ) cr
 0 trace !
+.( ::: open a pipe to the ls command ::: ) cr
 ls read_only popen constant fptr 
 ." file pointer: " fptr . ." converts to fd: "
-fptr fileno dup . get_io fptr pclose . . cr
+fptr fileno dup . cr get_io fptr pclose . . cr
 bye
