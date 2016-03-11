@@ -1,5 +1,10 @@
 .( ::: loading library interface ::: ) cr 
 
+0 constant off
+1 constant on
+
+: code_trace trace ! ( flg -- ) ;
+
 : load dlopen constant ;					( <str> | NULL -- creates lib ptr )
 : entry dlsym dup 0 == if dlerror type cr then ;		( <lib> <str> -- <ptr> looks up a symbol in library )
 : code create , , does> dup @ swap 1 cells + @ native ; 	( ptr n -- creates new forth word to call C code in ptr with n args )
@@ -53,7 +58,7 @@ gid .
    again
 ;
 
-0 trace !
+off code_trace
 .( ::: open a pipe to the ls command ::: ) cr
 ls read_only popen constant fptr 
 ." file pointer: " fptr . ." converts to fd: "
