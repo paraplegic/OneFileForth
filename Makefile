@@ -21,12 +21,12 @@ OS=(shell uname -s)
 LDOPTS:=
 PLATFORM:=FreeBSD
 CC=clang
-CCOPT=-O3
+CCOPT=-g -O3
 #else
 LDOPTS=-ldl
 PLATFORM=Linux
 CC=gcc
-CCOPT=-O3
+CCOPT=-g -O3
 #endif
 
 all:	$(OBJ)

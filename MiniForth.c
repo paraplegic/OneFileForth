@@ -2792,6 +2792,7 @@ void qdo(){
 void do_do(){
   Cell_t nxt ;
 
+  chk( 2 ) ;
   nxt = rpop() ;
   swap() ;
   rpush( pop() ) ; /* end point */
