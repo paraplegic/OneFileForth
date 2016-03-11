@@ -66,6 +66,6 @@ gid .
 .( ::: open a pipe to the ls command ::: ) cr
 0 trace !
 ls read_only popen constant fptr 
-fptr fileno get_io fptr pclose . . cr
-.s
+." file pointer: " fptr . ." converts to fd: "
+fptr fileno dup . get_io fptr pclose . . cr
 bye
