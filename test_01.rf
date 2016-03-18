@@ -6,9 +6,23 @@
   trace ! 
 ;
 
-: load dlopen constant ;					( <str> | NULL -- creates lib ptr )
-: entry dlsym dup 0 == if dlerror type cr then ;		( <lib> <str> -- <ptr> looks up a symbol in library )
-: code create , , does> dup @ swap 1 cells + @ native ; 	( ptr n -- creates new forth word to call C code in ptr with n args )
+: load ( <str> | NULL -- ... creates lib ptr )
+  dlopen constant 
+;
+
+: entry ( <lib> <str> -- <ptr> looks up a symbol in library )
+  dlsym dup 0 == if 
+       dlerror type cr 
+  then 
+;
+
+: code ( ptr n -- creates new forth word to call C code in ptr with n args )
+  create , , 
+  does> 
+     dup @ swap 1 cells + @ 
+     native 
+;
+
 : .sep ." -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=" cr ;
 : .sd cr .sep . ." :::" .s cr .sep ; 
 : .space 32 emit ;
