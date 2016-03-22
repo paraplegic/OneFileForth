@@ -14,3 +14,8 @@ The Makefile will support both the BSD make and the Linux GNU style make
 (or gmake on BSD).  The OneFileForth.c should compile on cygwin with minor changes
 but as I don't run DOS/Windows, I have no need for Cygwin.  Sorry, you're on your
 own.
+
+# Tested
+FreeBSD 10.2
+Debian  Jesse
+OSX  ??
