@@ -45,6 +45,9 @@ clean:
 	rm -rf test.log
 	rm -rf *.out
 
+edit:	$(SRC)
+	cscope -b $(SRC)
+
 test:	$(OBJ) test_00.rf
 	./mff -i test_00.rf 
 	./mff -i test_01.rf
