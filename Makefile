@@ -43,6 +43,7 @@ forth:	$(SRC)
 clean:
 	rm -rf $(OBJ)
 	rm -rf test.log
+	rm -rf *.out
 
 test:	$(OBJ) test_00.rf
 	./mff -i test_00.rf 
