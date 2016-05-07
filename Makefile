@@ -12,27 +12,18 @@
 ## gnu Make (gmake on BSD), and compile/link accordingly.
 ##
 
-SRC=MiniForth.c
-OBJ=mff forth
+SRC =MiniForth.c
+OBJ =mff forth
 FAST=-D NOCHECK
-OS=(shell uname -s)
+CCOPT=-g -O3
 
-#ifeq( $(OS), "FreeBSD" )
-LDOPTS:=
-PLATFORM:=FreeBSD
-CC=clang
-CCOPT=-g -O3
-#else
-LDOPTS=-ldl
-PLATFORM=Linux
-CC=gcc
-CCOPT=-g -O3
-#endif
+include $(OSTYPE).mk
 
 all:	$(OBJ)
 
 mff:	$(SRC)
-	@echo "Building for $(PLATFORM)"
+	@echo "OSTYPE is $(OSTYPE)"
+	@echo "Building for $(OSTYPE)"
 	$(CC) $(CCOPT) -o $@ $(FAST) $(LDOPTS) $(SRC)
 	size $@
 

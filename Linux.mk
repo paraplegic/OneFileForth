@@ -1,0 +1,2 @@
+LDOPTS:=-ldl
+CC:=gcc

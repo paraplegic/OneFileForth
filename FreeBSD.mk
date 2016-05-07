@@ -1,0 +1,2 @@
+LDOPTS:=
+CC:=clang
