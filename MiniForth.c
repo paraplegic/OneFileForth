@@ -732,7 +732,10 @@ void chk_args( int argc, char **argv )
 
 #endif
 
+// reset never forgets ...
+// forget does that (see below).
 void reset(){
+
 #ifdef HOSTED
   sigval = 0 ;
   signal( SIGINT, sig_hdlr ) ;
@@ -2880,8 +2883,8 @@ void do_ploop(){
 
 void forget()
 {
-  Here = (Cell_t *) StartOf( flash ) ;
-  DictPtr = (Cell_t *) StartOf( flash ) ;
-  String_Data = (Byt_t *) (&flash[sz_FLASH] - 1) ;
-  n_ColonDefs = 0 ; 
+  Here = (Cell_t *) StartOf( flash ) ;			// erase colon defs vars and constants ...
+  DictPtr = (Cell_t *) StartOf( flash ) ;		// set the dictptr to here ...
+  String_Data = (Byt_t *) (&flash[sz_FLASH] - 1) ;	// erase the string data referenced in the dictionary
+  n_ColonDefs = 0 ; 					// uncount the colon defs ... 
 }
