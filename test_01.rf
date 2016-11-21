@@ -96,4 +96,4 @@ ls read_only popen constant fptr
 ." file pointer: " fptr . ." converts to fd: "
 fptr fileno dup . cr get_io
 ." closing pipe:" fptr pclose . ." worked." drop cr
-bye
+forget words bye

@@ -387,6 +387,7 @@ void loop();
 void do_loop();
 void ploop();
 void do_ploop();
+void forget();
 
 /*
   -- dictionary is simply an array of struct ...
@@ -552,6 +553,7 @@ Dict_t Primitives[] = {
   { do_loop,	"(loop)", Normal, NULL },
   { ploop,	"+loop", Immediate, NULL },
   { do_ploop,	"(+loop)", Normal, NULL },
+  { forget,	"forget", Normal, NULL },
   { NULL, 	NULL, 0, NULL }
 } ;
 
@@ -2874,4 +2876,12 @@ void do_ploop(){
   rpush( nxt ) ;
   push( 1 ) ;
 
+}
+
+void forget()
+{
+  Here = (Cell_t *) StartOf( flash ) ;
+  DictPtr = (Cell_t *) StartOf( flash ) ;
+  String_Data = (Byt_t *) (&flash[sz_FLASH] - 1) ;
+  n_ColonDefs = 0 ; 
 }
