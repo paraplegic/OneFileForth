@@ -125,4 +125,4 @@ freespace cellsize / start_mem swap - . ." bytes." cr
 utime start_time - 1000000 / . ." seconds." cr
 
 freespace forget freespace swap - . ." bytes returned" cr
-words bye
+words cr cr bye

@@ -98,4 +98,4 @@ fptr fileno dup . cr get_io
 ." closing pipe:" fptr pclose . ." worked." drop cr
 
 freespace forget freespace swap - . ." bytes returned" cr
-forget words bye
+forget words cr cr bye
