@@ -764,7 +764,7 @@ void q_reset(){
 */
 #ifdef NATIVE
 void raise(){}
-int notmain(){
+int notmain( void ){
 #else
 int main( int argc, char **argv ){
 #endif
