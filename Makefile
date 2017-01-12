@@ -36,6 +36,9 @@ clean:
 	rm -rf $(OBJ)
 	rm -rf test.log
 	rm -rf *.out
+	rm -rf *.o
+	rm -rf *.elf
+	rm -rf *.bin
 
 edit:	$(SRC)
 	cscope -b $(SRC)

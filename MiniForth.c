@@ -92,8 +92,11 @@
 #define HOSTED
 #endif
 
-#ifndef HOSTED
+#ifdef __arm__
+#undef HOSTED
 #define NATIVE
+int GET8();
+int PUT8();
 #endif
 
 #ifdef HOSTED
@@ -120,10 +123,10 @@ int  			out_This = 0, out_files[ sz_FILES ] = { 1 } ;
 
 #ifdef NATIVE
 #define FLAVOUR 	"Native"
-#define sz_ColonDefs 	32	/* # entries */
-#define sz_FLASH	256	/* cells */
-#define sz_STACK	16	/* cells */
-#define sz_INBUF	32	/* bytes */
+#define sz_ColonDefs 	1024	/* # entries */
+#define sz_FLASH	1024 * 1024	/* cells */
+#define sz_STACK	32	/* cells */
+#define sz_INBUF	128	/* bytes */
 #define INPUT		0
 #define OUTPUT		1
 #endif
@@ -370,9 +373,9 @@ void qdlopen();
 void qdlclose();
 void qdlsym();
 void qdlerror();
+void spinner();
 #endif /* HOSTED */
 void last_will();
-void spinner();
 void callout();
 void clkspersec();
 void plusplus();
@@ -536,9 +539,9 @@ Dict_t Primitives[] = {
   { qdlclose,	"dlclose", Normal, NULL },
   { qdlsym,	"dlsym", Normal, NULL },
   { qdlerror,	"dlerror", Normal, NULL },
-#endif /* HOSTED */
   { last_will,	"atexit", Normal, NULL },
   { spinner,	"spin", Normal, NULL },
+#endif /* HOSTED */
   { callout,	"native", Normal, NULL },
   { clkspersec,	"clks", Normal, NULL },
   { plusplus,	"++", Normal, NULL },
@@ -734,7 +737,7 @@ void chk_args( int argc, char **argv )
 
 // reset never forgets ...
 // forget does that (see below).
-void reset(){
+void q_reset(){
 
 #ifdef HOSTED
   sigval = 0 ;
@@ -759,10 +762,15 @@ void reset(){
 /*
   -- innards of the `machine'.
 */
+#ifdef NATIVE
+void raise(){}
+int notmain(){
+#else
 int main( int argc, char **argv ){
+#endif
 
 #ifdef HOSTED
-  reset() ;
+  q_reset() ;
   chk_args( argc, argv ) ;
   if( !quiet ) 
       banner() ;
@@ -777,10 +785,11 @@ int main( int argc, char **argv ){
       execute() ;
   }
 #else
-  reset() ;
+  q_reset() ;
   banner() ;
 #endif
   quit() ;
+  return 0 ;
 }
 
 Wrd_t ch_matches( Byt_t ch, Str_t anyOf ){
@@ -891,7 +900,7 @@ Wrd_t str_length( Str_t str ){
 
 Wrd_t str_literal( Str_t tkn, Wrd_t radix ){
   Str_t digits = "0123456789abcdefghijklmnopqrstuvwxyz" ;
-  Wrd_t  ret, len, sign, digit, base ;
+  Wrd_t  ret, sign, digit, base ;
   Str_t p ;
 
   if( radix > str_length( digits ) ){
@@ -945,7 +954,6 @@ Wrd_t str_literal( Str_t tkn, Wrd_t radix ){
 }
 
 void str_set( Str_t dst, Byt_t dat, Wrd_t len ){
-  Wrd_t i ;
   Str_t ptr ;
 
   for( ptr = dst ; ptr - dst < len ; ptr++ ){
@@ -1040,7 +1048,7 @@ Wrd_t str_format( Str_t dst, Wrd_t dlen, Str_t fmt, ... ){
   va_list ap;
   Str_t p_fmt, p_dst, p_end, str ;
   Byt_t ch ;
-  Wrd_t cell, n ;
+  Wrd_t cell ;
 
   p_end = dst + dlen ;
   p_dst = dst ;
@@ -1092,7 +1100,6 @@ Wrd_t str_format( Str_t dst, Wrd_t dlen, Str_t fmt, ... ){
 }
 
 Str_t str_uncache( Str_t tag ){
-  Str_t ret ;
   Cell_t len ;
 
   len = str_length( tag ) + 1 ;
@@ -1147,15 +1154,16 @@ Dict_t *lookup( Str_t tkn ){
 void quit(){
   Str_t tkn ;
   Dict_t *dp ;
-  Err_t err ;
-  Wrd_t beenhere, n ;
 
+#ifdef HOSTED
+  Wrd_t beenhere, n ;
   beenhere = setjmp( env ) ;
   if( beenhere > 0 ){
     catch();
     n = fmt( "-- Reset by %s.\n", resetfrom[beenhere] ) ;
     outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
   }
+#endif
   for(;;){
     while( (tkn = str_token( scratch, sz_INBUF )) ){
       dp = lookup( tkn );
@@ -1246,11 +1254,10 @@ void modulo(){
 }
 
 void dotS(){
-  Wrd_t d ;
   Cell_t *ptr ;
 
   chk( 0 ) ; 
-  depth() ; dupe() ; dot() ; d = pop() ; 
+  depth() ; dot() ;
   push( (Cell_t) " : " ) ; type() ;
   for( ptr = StartOf( stack )+1 ; tos >= ptr ; ptr++ ){
     push( *ptr ) ; dot() ;
@@ -1275,7 +1282,9 @@ void udot(){
 }
 
 void bye(){
+#ifdef HOSTED
   exit( error_code ) ;
+#endif
 }
 
 void words(){
@@ -1304,7 +1313,9 @@ Wrd_t checkstack( Wrd_t n, Str_t fun ){
       x = fmt( "-- Found %d of %d args expected in '%s'.\n", d, n, fun ) ; 
       outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), x ) ;
       throw( err_StackUdr ) ;
+#ifdef HOSTED
       longjmp( env, 4 ) ;
+#endif
     }
     return 1 ;
   }
@@ -1531,10 +1542,8 @@ void qdupe(){
 }
 
 void drop(){
-  Cell_t sav ;
-
   chk( 1 ) ; 
-  sav = pop() ;
+  tos-- ;
 }
 
 void over(){
@@ -1577,6 +1586,7 @@ void pick(){
 }
 
 void Eof(){
+#ifdef HOSTED
   if( in_This > 0 ){
     push( 0 ) ; 
     infile() ;
@@ -1591,6 +1601,9 @@ void Eof(){
   throw( err_NoInput ) ;
   catch() ;
   exit( 0 ) ;
+#else
+  return ;
+#endif
 }
 
 void cells(){
@@ -1609,7 +1622,6 @@ void err_throw( Str_t whence, Err_t err ){
 
 void catch(){
   Wrd_t sz ;
-  Fptr_t ok ;
 
   switch( error_code ){
     case err_OK:
@@ -1626,7 +1638,7 @@ void catch(){
         goto reset;
         goto die;
       }
-      ok = signal( sigval, sig_hdlr ) ;
+      Fptr_t ok = signal( sigval, sig_hdlr ) ;
       sz = fmt( "-- Signal %d handled. (%x)\n", sigval, ok ) ;
       outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
       break ;
@@ -1659,14 +1671,22 @@ void catch(){
       }
   }
 
+#ifdef HOSTED
  reset:
-  reset() ;
+  q_reset() ;
   longjmp( env, 2 );
 
  die:
   sz = fmt( "-- Terminated.\n" ) ;
   outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
   exit( error_code ) ;
+#endif
+#ifdef NATIVE
+ die:
+  sz = fmt( "-- Terminated.\n" ) ;
+  outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+#endif
+
 }
 
 void wrd_fetch(){
@@ -1839,8 +1859,8 @@ void dotquote(){
 }
 
 void comment(){
-  Str_t ptr ;
-  ptr = str_delimited( ")" ) ;
+  push( (Cell_t) str_delimited( ")" ) ) ;
+  drop();
 }
 
 void dotcomment(){
@@ -1888,8 +1908,7 @@ void ssave(){
 }
 
 void unssave(){
-  Byt_t *tag, *buf_ptr ;
-  Wrd_t d ;
+  Byt_t *tag ;
 
   chk( 1 ) ;
   tag = (Byt_t *) pop();
@@ -1911,7 +1930,6 @@ void Tmp(){
 
 void pad(){
   register Cell_t n ; 
-  Str_t  pad ;
 
   here() ;
   push( 20 ) ; 
@@ -1972,6 +1990,7 @@ void key(){
     push( (Cell_t) (getch() & 0xff) ) ;
     return  ;
 #else
+#ifdef HOSTED
   Byt_t ch ;
   Wrd_t x ;
 
@@ -1979,6 +1998,10 @@ void key(){
   inp( INPUT, (Str_t) &ch, 1 ) ;
   x = io_cbreak( INPUT ) ;
   push( ch & 0xff ) ;
+#else
+  push( (Cell_t) GET8() );
+#endif
+
 #endif
 }
 
@@ -2085,7 +2108,6 @@ void allot(){
 }
 
 void create(){
-  Cell_t *save ;
   Str_t   tag ;
   Dict_t *dp ;
 
@@ -2255,7 +2277,6 @@ void doColon(){
 }
 
 void semicolon(){
-  Dict_t *ptr ; 
 
   if( state != state_Compiling ){
     throw( err_BadState );
@@ -2341,12 +2362,14 @@ void base(){
 }
 
 void resetter(){
-  reset() ;
+  q_reset() ;
+#ifdef HOSTED
   longjmp( env, 3 ) ;
+#endif
 }
 
 void see(){
-  register Dict_t *p, *q, *r ; 
+  register Dict_t *p, *r ; 
   Cell_t *ptr, n ; 
 
   chk( 1 ) ; 
@@ -2405,7 +2428,7 @@ void see(){
 */
 
 Wrd_t put_str( Str_t s ){
-  register Cell_t n ;
+  register Cell_t n = 0;
   if( !isNul( s ) ){
     n = str_length( s ) ; 
     outp( OUTPUT, s, n ) ;
@@ -2439,6 +2462,8 @@ Wrd_t io_cbreak( int fd ){
   }
   return inCbreak ;
 #endif
+#else
+  return 1 ;
 #endif
 }
 
@@ -2502,12 +2527,14 @@ Wrd_t getstr( Wrd_t fd, Str_t buf, Wrd_t len ){
     if( n == 0 ){
       return i ;
     }
+#ifdef HOSTED
     if( n < 1 ){
       if( errno != EAGAIN ){
        throw( err_SysCall ) ;
       }
       return i ; 
     }
+#endif
     if( i > (len - 1) ){
       return i ;
     }
@@ -2522,7 +2549,7 @@ Wrd_t getstr( Wrd_t fd, Str_t buf, Wrd_t len ){
 
 void rcvtty(){	/* ( fd n -- buf n ) */
   Str_t buf ;
-  Wrd_t n, nx, nr, fd ;
+  Wrd_t n, nr, fd ;
 
   chk( 2 ) ; 
 
@@ -2567,18 +2594,19 @@ void opentty(){	/* ( str -- fd ) */
 }
 
 void closetty(){
+#ifdef HOSTED
   chk( 1 ) ; 
   close( (Wrd_t) pop() ) ;
+#endif
 }
 
 void infile(){
-  Str_t fn ;
+#ifdef HOSTED
   Cell_t fd ;
 
   chk( 1 ) ; 
 
-  fn = (Str_t) pop() ;
-#ifdef HOSTED
+  Str_t fn = (Str_t) pop() ;
   if( !isNul( fn ) ){
     fd = open( fn, O_RDONLY ) ;
     if( fd < 0 ){
@@ -2597,12 +2625,12 @@ void infile(){
 }
 
 void outfile(){
+#ifdef HOSTED
   Str_t fn ;
   Cell_t fd, fexists ;
   uCell_t fflg = O_CREAT | O_RDWR | O_APPEND ;
 
   fn = (Str_t) pop() ;
-#ifdef HOSTED
   if( !isNul( fn ) ){
 #if !defined( __WIN32__ )
     uCell_t fprm = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH ;
@@ -2625,13 +2653,16 @@ void outfile(){
 }
 
 void closeout(){
+#ifdef HOSTED
   if( OUTPUT > 1 ){
     close( OUTPUT ) ;
     out_This-- ;
   }
+#endif
 }
 
 void isfile(){
+#ifdef HOSTED
   struct stat sbuf ;
   Cell_t rv ;
   Str_t fn = (Str_t) pop() ;
@@ -2641,14 +2672,35 @@ void isfile(){
     rv = stat( (const Str_t ) fn, &sbuf ) ;
   }
   push( (rv == 0) ? 1 : 0 ) ; 
+#endif
 }
 
 Wrd_t outp( Wrd_t fd, Str_t buf, Wrd_t len ){
+#ifdef HOSTED
   return write( fd, buf, len ) ;
+#endif
+#ifdef NATIVE
+  Cell_t i ;
+  for( i = 0 ; i < len; i++ )
+  {
+    buf[i] = PUT8();
+  }
+  return i ;
+#endif
 }
 
 Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
+#ifdef HOSTED
   return read( fd, buf, len ) ;
+#endif
+#ifdef NATIVE
+  Cell_t i ;
+  for( i = 0 ; i < len; i++ )
+  {
+    buf[i] = GET8();
+  }
+  return i ;
+#endif
 }
 
 #if defined avr || defined AVR
@@ -2690,7 +2742,6 @@ void qdlerror(){
   push( (Cell_t) dlerror() ) ;
 }
 
-#endif /* HOSTED */
 
 void last_will(){
   Opq_t cmd ;
@@ -2702,7 +2753,7 @@ void last_will(){
 
 void spinner(){
   static Byt_t x = 0 ;
-  Byt_t n, f[4] = { '-', '\\', '|', '/' } ;
+  Byt_t f[4] = { '-', '\\', '|', '/' } ;
 
   push( f[ x++ % 4 ] ) ;
   emit();
@@ -2710,6 +2761,7 @@ void spinner(){
   emit();
 
 }
+#endif /* HOSTED */
 
 void callout(){
   Cptr_t fun ;
@@ -2773,11 +2825,13 @@ void minusminus(){
 }
 
 void utime(){
+#ifdef HOSTED
   struct timeval tv ;
   uint64_t rv = 0ULL ;
 
   gettimeofday( &tv, NULL ) ;
   push( ( tv.tv_sec * 1000000 ) + tv.tv_usec ) ;
+#endif
 }
 
 void ops(){
@@ -2817,8 +2871,9 @@ void do_loop()
     return ;
   }
 
-  rpop();			// drop i
-  rpop();			// drop n
+  // rpop();			// drop i
+  // rpop();			// drop n
+  rtos-- ; rtos-- ;
   rpush( nxt ) ;		// restore nxt
   push( 1 ) ;			// flag for branch
 
@@ -2874,8 +2929,9 @@ void do_ploop(){
 
   }
 
-  rpop();
-  rpop();
+  // rpop();
+  // rpop();
+  rtos-- ; rtos-- ;
   rpush( nxt ) ;
   push( 1 ) ;
 
