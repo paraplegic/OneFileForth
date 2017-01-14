@@ -25,7 +25,7 @@ all:	$(OBJ)
 mff:	$(SRC)
 	@echo "OSTYPE is $(OSTYPE)"
 	@echo "Building for $(OSTYPE)"
-	$(CC) $(CCOPT) -o $@ $(FAST) $(LDOPTS) $(SRC)
+	$(CC) $(CCOPT) -o $@ $(FAST) $(LDOPTS) $(SRC) 
 	size $@
 
 forth:	$(SRC)

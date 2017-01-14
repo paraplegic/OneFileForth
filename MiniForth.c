@@ -39,7 +39,6 @@
 
 #include <stdlib.h>
 #include <stdarg.h>
-#include <setjmp.h>
 #include <fcntl.h>
 
 #ifdef NEVER
@@ -95,11 +94,11 @@
 #ifdef __arm__
 #undef HOSTED
 #define NATIVE
-int GET8();
-int PUT8();
+
 #endif
 
 #ifdef HOSTED
+#include <setjmp.h>
 #include <errno.h>
 #include <string.h>
 #include <signal.h>
@@ -109,26 +108,28 @@ volatile sig_atomic_t sigval = 0 ;
 #if !defined( __WIN32__ )
 struct termios tty_normal_state ;
 #endif
-#define FLAVOUR 	"Hosted"
-#define sz_ColonDefs 	512	/* # entries */
-#define sz_FLASH	16384	/* cells */
-#define sz_STACK	32	/* cells */
-#define sz_INBUF	127	/* bytes */
-#define sz_FILES	5	/* nfiles */
-int  			in_This = 0, in_files[ sz_FILES ] = { 0 } ;
-int  			out_This = 0, out_files[ sz_FILES ] = { 1 } ;
-#define INPUT		in_files[ in_This ]
-#define OUTPUT		out_files[ out_This ]
+#define FLAVOUR 		"Hosted"
+#define sz_ColonDefs 	1024		/* # entries */
+#define sz_FLASH		16384		/* cells */
+#define sz_STACK		32			/* cells */
+#define sz_INBUF		127			/* bytes */
+#define sz_FILES		5			/* nfiles */
+int  					in_This = 0, in_files[ sz_FILES ] = { 0 } ;
+int  					out_This = 0, out_files[ sz_FILES ] = { 1 } ;
+#define INPUT			in_files[ in_This ]
+#define OUTPUT			out_files[ out_This ]
+jmp_buf env ;
 #endif
 
 #ifdef NATIVE
-#define FLAVOUR 	"Native"
-#define sz_ColonDefs 	1024	/* # entries */
-#define sz_FLASH	1024 * 1024	/* cells */
-#define sz_STACK	32	/* cells */
-#define sz_INBUF	128	/* bytes */
-#define INPUT		0
-#define OUTPUT		1
+#define FLAVOUR 		"Native"
+#define sz_ColonDefs 	1024		/* # entries */
+#define sz_FLASH		16384	/* cells */
+#define sz_STACK		32		/* cells */
+#define sz_INBUF		127		/* bytes */
+#define sz_FILES		5		/* nfiles */
+#define INPUT			0
+#define OUTPUT			1
 #endif
 
 #if _WORDSIZE == 2
@@ -649,7 +650,6 @@ Str_t promptStr[] = {
 
 Str_t error_loc = (Str_t) NULL ;
 Err_t error_code = 0 ;
-jmp_buf env ;
 
 /*
  -- string and character handling stuff which converts
@@ -672,7 +672,7 @@ void str_set( Str_t dst, Byt_t dat, Wrd_t len );
 Wrd_t str_copy( Str_t dst, Str_t src, Wrd_t len );
 Wrd_t str_utoa( uByt_t *dst, Wrd_t dlen, Cell_t val, Wrd_t radix );
 Wrd_t str_ntoa( Str_t dst, Wrd_t dlen, Cell_t val, Wrd_t radix, Wrd_t isSigned );
-Str_t str_token( Str_t buf, Byt_t len );
+Str_t str_token( Str_t buf, Wrd_t len );
 Str_t str_delimited( Str_t term ) ;
 Str_t str_cache( Str_t tag );
 Str_t str_uncache( Str_t tag );
@@ -763,8 +763,59 @@ void q_reset(){
   -- innards of the `machine'.
 */
 #ifdef NATIVE
-void raise(){}
+void tracker( const char *F, int L );
+void raise(){tracker((const char *) __FUNCTION__, __LINE__);}
+
+#define UART_BASE 0x101F1000UL
+// #define UARTDR    (UART_BASE+0x000)
+// #define UARTFR    (UART_BASE+0x018)
+volatile unsigned int * const UARTDR = (unsigned int *)0x101f1000;      // UART0 data register
+volatile unsigned int * const UARTFR = (unsigned int *)0x101f1018;      // UART0 flag register
+volatile unsigned int * const UARTCR = (unsigned int *)0x101f1030;      // UART0 control register
+volatile unsigned int * const UARTLCR_H = (unsigned int *)0x101f102c;   // UART0 line control register
+
+
+// defined in the assembler file ...
+int GET8( unsigned adr );
+int GET32( unsigned adr );
+int PUT32( unsigned adr, unsigned char ch );
+
+void uart_putc ( unsigned int c )
+{
+    while( ( *(UARTFR) & 0x20 ) != 0 );
+    *(UARTDR) = c & 0xff ;
+}
+
+Cell_t uart_getc( void )
+{
+   while( 1 )
+   { 
+      if ( ( *(UARTFR) & (1<<6)) ) break ;
+   }
+
+   return *(UARTDR) | 0xff ;
+}
+
+int uart_can_recv( void )
+{
+   if( ( (*UARTFR) & (1<<6) ) == 0 )
+     return( 0 );
+
+  return( 1 );
+}
+
+void uart_init(void)
+{
+   return;
+    *UARTCR &= 0xfffe; // disable bit 0 -- disable UART0
+    *UARTLCR_H &= 0xffef; // disable bit 4 -- disable FIFO for UART0
+//    *UARTLCR_H |= 0x10; // enable FIFO for UART0
+    *UARTCR |= 0x01;  // enable the UART0
+
+}
+
 int notmain( void ){
+uart_init();
 #else
 int main( int argc, char **argv ){
 #endif
@@ -825,13 +876,13 @@ Wrd_t ch_index( Str_t str, Byt_t c ){
   return -1;
 }
 
-Str_t str_token( Str_t buf, Byt_t len ){
+Str_t str_token( Str_t buf, Wrd_t len ){
   static int ch = -1 ;
   static int nr = -1 ; 
   int tkn ;
 
   inbuf[0] = (Byt_t) 0 ;
-  if( isNul( buf ) || len < 0 ) { /* reset requested */
+  if( isNul( buf ) || len < 0 ) { // reset requested ... toss inbuf ...
     ch = nr = -1 ;
     return (Str_t) NULL ; 
   }
@@ -839,26 +890,25 @@ Str_t str_token( Str_t buf, Byt_t len ){
   tkn = 0 ;
   do {
 
-    if( nr < 1 ){
+    if( nr < 1 ){ // prompt and get input ... 
       prompt() ;
       nr = inp( INPUT, (Str_t) inbuf, sz_INBUF ) ;
-      if( nr == 0 )
-        return inEOF ;
-      ch = 0 ;
-    }
-
-    if( ch > (nr-1) ){
-      ch = nr = -1 ;
+      if( nr == 0 ) return inEOF ;
       continue ;
     }
 
-    if( !ch_matches( inbuf[ch++], WHITE_SPACE ) ){
-      buf[tkn++] = inbuf[ch-1] ; 
-      buf[tkn] = (Byt_t) 0 ; 
+    if( ch > (nr-1) ){ // exhausted inbuf, need more input ...
+      ch = nr = -1 ; 
       continue ;
     }
 
-    if( tkn > 0 ){
+    if( !ch_matches( inbuf[ch], WHITE_SPACE ) ){ // printing char in inbuf[ch]
+      buf[tkn++] = inbuf[ch++] ;
+      buf[tkn] = (Byt_t) 0 ;
+      continue ;
+    }
+
+    if( tkn > 0 ){ // white space in inbuf[ch] ...
       return buf ;
     }
 
@@ -1123,7 +1173,6 @@ Str_t str_cache( Str_t tag ){
 Dict_t *lookup( Str_t tkn ){
   Dict_t *p ;
   Cell_t  i ;
-
   if( isNul( tkn ) )
      return (Dict_t *) NULL ;
 
@@ -1155,8 +1204,8 @@ void quit(){
   Str_t tkn ;
   Dict_t *dp ;
 
+  Wrd_t beenhere = 0, n ;
 #ifdef HOSTED
-  Wrd_t beenhere, n ;
   beenhere = setjmp( env ) ;
   if( beenhere > 0 ){
     catch();
@@ -1184,6 +1233,14 @@ void banner(){
   n = fmt( "-- MiniForth-%s alpha Version: %s.%s.%s%c\n", FLAVOUR, MAJOR, MINOR, REVISION, dbg ) ;
   outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
   n = fmt( "-- www.ControlQ.com\n" ) ;
+  outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
+}
+
+void tracker( const char *fun, int line )
+{
+  Wrd_t n ;
+
+  n = fmt( "-- %s: %d\n", fun, line ) ;
   outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
 }
 
@@ -1671,20 +1728,16 @@ void catch(){
       }
   }
 
+ die:
+  sz = fmt( "-- Terminated.\n" ) ;
+  outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+
 #ifdef HOSTED
+  exit( error_code ) ;
+
  reset:
   q_reset() ;
   longjmp( env, 2 );
-
- die:
-  sz = fmt( "-- Terminated.\n" ) ;
-  outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
-  exit( error_code ) ;
-#endif
-#ifdef NATIVE
- die:
-  sz = fmt( "-- Terminated.\n" ) ;
-  outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
 #endif
 
 }
@@ -1982,6 +2035,8 @@ void q_key(){
   waitrdy() ;
   io_cbreak( INPUT ) ;
 #endif
+#else
+  push( uart_can_recv() );
 #endif
 }
 
@@ -1999,7 +2054,7 @@ void key(){
   x = io_cbreak( INPUT ) ;
   push( ch & 0xff ) ;
 #else
-  push( (Cell_t) GET8() );
+  push( (Cell_t) uart_getc() );
 #endif
 
 #endif
@@ -2645,10 +2700,6 @@ void outfile(){
     out_files[++out_This] = fd ;
     return ;
   } 
-  if( OUTPUT > 1 ){
-    close( OUTPUT ) ;
-    out_This-- ;
-  }
 #endif
 }
 
@@ -2683,7 +2734,7 @@ Wrd_t outp( Wrd_t fd, Str_t buf, Wrd_t len ){
   Cell_t i ;
   for( i = 0 ; i < len; i++ )
   {
-    buf[i] = PUT8();
+    uart_putc( (unsigned) buf[i]&0xff );
   }
   return i ;
 #endif
@@ -2692,14 +2743,17 @@ Wrd_t outp( Wrd_t fd, Str_t buf, Wrd_t len ){
 Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
 #ifdef HOSTED
   return read( fd, buf, len ) ;
-#endif
+#else
 #ifdef NATIVE
-  Cell_t i ;
-  for( i = 0 ; i < len; i++ )
+  Cell_t c, i = 0 ;
+  
+  while( i < len )
   {
-    buf[i] = GET8();
+    c = uart_getc();
+    buf[i++] = c ;
   }
   return i ;
+#endif
 #endif
 }
 
