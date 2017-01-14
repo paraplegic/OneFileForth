@@ -37,9 +37,8 @@
 #define MINOR		"01"
 #define REVISION	"30"
 
-#include <stdlib.h>
 #include <stdarg.h>
-#include <fcntl.h>
+#include <stdint.h>
 
 #ifdef NEVER
 #include <stdio.h>
@@ -98,6 +97,9 @@
 #endif
 
 #ifdef HOSTED
+#include <stdlib.h>
+#include <fcntl.h>
+
 #include <setjmp.h>
 #include <errno.h>
 #include <string.h>
@@ -130,6 +132,7 @@ jmp_buf env ;
 #define sz_FILES		5		/* nfiles */
 #define INPUT			0
 #define OUTPUT			1
+#define NULL			0
 #endif
 
 #if _WORDSIZE == 2
@@ -706,7 +709,7 @@ void usage(int argc, char **argv )
   
 }
 
-#define STD_ARGS "i:x:q"
+#define STD_ARGS "i:x:q:t"
 void chk_args( int argc, char **argv )
 {
   int ch, err=0 ; 
@@ -722,6 +725,11 @@ void chk_args( int argc, char **argv )
           break ;
         case 'q':
           quiet++ ;
+          break ;
+	case 't':
+	  push( 1 );
+	  trace() ;
+	  wrd_store();
           break ;
         default:
           err++ ;
@@ -763,6 +771,7 @@ void q_reset(){
   -- innards of the `machine'.
 */
 #ifdef NATIVE
+
 void tracker( const char *F, int L );
 void raise(){tracker((const char *) __FUNCTION__, __LINE__);}
 
@@ -790,9 +799,8 @@ Cell_t uart_getc( void )
 {
    while( 1 )
    { 
-      if ( ( *(UARTFR) & (1<<6)) ) break ;
+      if ( (*(UARTFR) & (1<<6)) ) break ;
    }
-
    return *(UARTDR) | 0xff ;
 }
 
@@ -816,8 +824,11 @@ void uart_init(void)
 
 int notmain( void ){
 uart_init();
-#else
+
+#else // NATIVE vs HOSTED ... 
+
 int main( int argc, char **argv ){
+
 #endif
 
 #ifdef HOSTED
@@ -894,6 +905,7 @@ Str_t str_token( Str_t buf, Wrd_t len ){
       prompt() ;
       nr = inp( INPUT, (Str_t) inbuf, sz_INBUF ) ;
       if( nr == 0 ) return inEOF ;
+      ch = 0 ;
       continue ;
     }
 
@@ -902,8 +914,9 @@ Str_t str_token( Str_t buf, Wrd_t len ){
       continue ;
     }
 
-    if( !ch_matches( inbuf[ch], WHITE_SPACE ) ){ // printing char in inbuf[ch]
-      buf[tkn++] = inbuf[ch++] ;
+    // note the side effect of the test below (ch++) ...
+    if( !ch_matches( inbuf[ch++], WHITE_SPACE ) ){ // printing char in inbuf[ch]
+      buf[tkn++] = inbuf[ch-1] ;
       buf[tkn] = (Byt_t) 0 ;
       continue ;
     }
@@ -1204,8 +1217,8 @@ void quit(){
   Str_t tkn ;
   Dict_t *dp ;
 
-  Wrd_t beenhere = 0, n ;
 #ifdef HOSTED
+  Wrd_t beenhere = 0, n ;
   beenhere = setjmp( env ) ;
   if( beenhere > 0 ){
     catch();
@@ -2750,7 +2763,8 @@ Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
   while( i < len )
   {
     c = uart_getc();
-    buf[i++] = c ;
+    if( c > 0 )
+      buf[i++] = c ;
   }
   return i ;
 #endif
@@ -2867,7 +2881,9 @@ void callout(){
 }
 
 void clkspersec(){
+#ifdef HOSTED
   push( CLOCKS_PER_SEC ) ;
+#endif
 }
 
 void plusplus(){

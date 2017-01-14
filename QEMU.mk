@@ -1,6 +1,9 @@
-ARMGNU ?= arm-linux-gnueabi
+## ARMGNU ?= arm-linux-gnueabi
+ARMGNU ?= arm-none-eabi
 
-LDPTH ?= /usr/lib/gcc/arm-linux-gnueabi/4.9/libgcc.a
+
+## LDPTH ?= /usr/lib/gcc/arm-linux-gnueabi/4.9/libgcc.a
+LDPTH ?= /usr/local/lib/gcc/arm-none-eabi/5.3.0/libgcc.a
 AARCH = -march=armv5t
 AOPS = --warn --fatal-warnings $(AARCH)
 COPS = -Wall -O2 -nostdlib -nostartfiles -ffreestanding $(AARCH)

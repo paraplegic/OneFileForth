@@ -15,7 +15,7 @@
 SRC =MiniForth.c
 OBJ =mff forth
 FAST=-D NOCHECK
-CCOPT=-g -O3
+CCOPT=-g -O0
 OSTYPE = $(shell uname -s)
 
 include $(OSTYPE).mk
@@ -39,6 +39,7 @@ clean:
 	rm -rf *.o
 	rm -rf *.elf
 	rm -rf *.bin
+	rm -rf *.list
 
 edit:	$(SRC)
 	cscope -b $(SRC)
