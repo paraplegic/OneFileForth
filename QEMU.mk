@@ -20,8 +20,7 @@ MiniForth.o : MiniForth.c
 	$(ARMGNU)-gcc -c $(COPS) -D NOCHECK MiniForth.c -o MiniForth.o
 
 qemu:	MiniForth.bin
-	qemu-system-arm -M versatilepb -m 128M -nographic -kernel MiniForth.bin
-##	qemu-system-arm -M versatilepb -m 128M -nographic -kernel MiniForth.bin
+	qemu-system-arm -M versatilepb -m 1024M -nographic -kernel MiniForth.bin 
 
 
 clean:

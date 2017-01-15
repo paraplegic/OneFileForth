@@ -775,9 +775,9 @@ void q_reset(){
 void tracker( const char *F, int L );
 void raise(){tracker((const char *) __FUNCTION__, __LINE__);}
 
-#define UART_BASE 0x101F1000UL
-// #define UARTDR    (UART_BASE+0x000)
-// #define UARTFR    (UART_BASE+0x018)
+#define x_UART_BASE 0x101F1000UL
+#define x_UARTDR    (x_UART_BASE+0x000)
+#define x_UARTFR    (x_UART_BASE+0x018)
 volatile unsigned int * const UARTDR = (unsigned int *)0x101f1000;      // UART0 data register
 volatile unsigned int * const UARTFR = (unsigned int *)0x101f1018;      // UART0 flag register
 volatile unsigned int * const UARTCR = (unsigned int *)0x101f1030;      // UART0 control register
@@ -806,14 +806,15 @@ Cell_t uart_getc( void )
 
 int uart_can_recv( void )
 {
-   if( ( (*UARTFR) & (1<<6) ) == 0 )
-     return( 0 );
+   if( ( (*UARTFR) & (1<<6) ) )
+     return( 1 );
 
-  return( 1 );
+  return( 0 );
 }
 
 void uart_init(void)
 {
+   GET32( x_UARTDR );
    return;
     *UARTCR &= 0xfffe; // disable bit 0 -- disable UART0
     *UARTLCR_H &= 0xffef; // disable bit 4 -- disable FIFO for UART0
@@ -922,6 +923,7 @@ Str_t str_token( Str_t buf, Wrd_t len ){
     }
 
     if( tkn > 0 ){ // white space in inbuf[ch] ...
+put_str( buf ) ;
       return buf ;
     }
 
@@ -2763,6 +2765,7 @@ Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
   while( i < len )
   {
     c = uart_getc();
+    if( ch_matches( c, "\r\n" ) ) break ;
     if( c > 0 )
       buf[i++] = c ;
   }
