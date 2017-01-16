@@ -132,7 +132,9 @@ jmp_buf env ;
 #define sz_FILES		5		/* nfiles */
 #define INPUT			0
 #define OUTPUT			1
+#ifndef NULL
 #define NULL			0
+#endif
 #endif
 
 #if _WORDSIZE == 2
@@ -2494,22 +2496,29 @@ void see(){
 }
 
 /*
-  -- I/O routines ...
+  -- I/O routines --
+
   must be written for the Atmel AVR's, but
-  Linux/Unix/Windows can simply use read/write.
+  any HOSTED (Linux/Unix/Windows) system can simply use read/write.
   key and ?key are special cases (len == 1), 
   and cbreak has been added for processing for tty's.
+
+  For Native ARM based systems, we will be implementing uart put/get functions
+  and a get without echo (for key) ... 
 
 */
 
 Wrd_t put_str( Str_t s ){
+
   register Cell_t n = 0;
+
   if( !isNul( s ) ){
     n = str_length( s ) ; 
     outp( OUTPUT, s, n ) ;
     outp( OUTPUT, " ", 1 ) ;
   }
   return n ;
+
 }
 
 Wrd_t io_cbreak( int fd ){
@@ -2538,7 +2547,7 @@ Wrd_t io_cbreak( int fd ){
   return inCbreak ;
 #endif
 #else
-  return 1 ;
+  return v_On ;
 #endif
 }
 
@@ -2765,7 +2774,7 @@ Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
   return read( fd, buf, len ) ;
 #else
 #ifdef NATIVE
-  Cell_t c, i = 0 ;
+  Cell_t c, x, i = 0 ;
   
   str_set( buf, 0, len ) ;
   while( i < len )
@@ -2776,7 +2785,7 @@ Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
        str_set( buf, 0, len ) ;
        int slen = str_length( buf ) ;
        uart_putc( 0x0a ) ;
-       for( int x = 0 ; x < slen; x++ )
+       for( x = 0 ; x < slen; x++ )
            uart_putc( 0x20 ) ;
        uart_putc( 0x0a ) ;
        i = 0 ;
