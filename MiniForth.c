@@ -795,32 +795,37 @@ void uart_putc ( unsigned int c )
     *(UARTDR) = c & 0xff ;
 }
 
+Cell_t uart_getc_ne( void )
+{
+  int ch ; 
+  while ( *(UARTFR) == 0x90 ) ;
+
+  ch = *(UARTDR) ;
+  return ch ;
+}
+
 Cell_t uart_getc( void )
 {
-   while( 1 )
-   { 
-      if ( (*(UARTFR) & (1<<6)) ) break ;
-   }
-   return *(UARTDR) | 0xff ;
+  int ch ; 
+  while ( *(UARTFR) == 0x90 ) ;
+
+  ch = *(UARTDR) ;
+  uart_putc( ch ) ;
+  return ch ;
 }
 
 int uart_can_recv( void )
 {
-   if( ( (*UARTFR) & (1<<6) ) )
-     return( 1 );
+   if( (*UARTFR) == 0x90 )
+     return( 0 );
 
-  return( 0 );
+  return( 1 );
 }
 
 void uart_init(void)
 {
    GET32( x_UARTDR );
    return;
-    *UARTCR &= 0xfffe; // disable bit 0 -- disable UART0
-    *UARTLCR_H &= 0xffef; // disable bit 4 -- disable FIFO for UART0
-//    *UARTLCR_H |= 0x10; // enable FIFO for UART0
-    *UARTCR |= 0x01;  // enable the UART0
-
 }
 
 int notmain( void ){
@@ -923,7 +928,6 @@ Str_t str_token( Str_t buf, Wrd_t len ){
     }
 
     if( tkn > 0 ){ // white space in inbuf[ch] ...
-put_str( buf ) ;
       return buf ;
     }
 
@@ -1007,7 +1011,8 @@ Wrd_t str_literal( Str_t tkn, Wrd_t radix ){
    while( *p ){
      digit = ch_index( digits, ch_tolower( *p++ ) ) ;
      if( digit < 0 || digit > (base - 1) ){
-       put_str( tkn ) ;
+       fmt( "-- %s digit: '%x'\n", tkn, digit ) ;
+       put_str( (Str_t) tmp_buffer ) ;
        throw( err_BadLiteral ) ;
        return -1 ;
      }
@@ -2069,7 +2074,7 @@ void key(){
   x = io_cbreak( INPUT ) ;
   push( ch & 0xff ) ;
 #else
-  push( (Cell_t) uart_getc() );
+  push( (Cell_t) uart_getc_ne() & 0xff );
 #endif
 
 #endif
@@ -2762,12 +2767,35 @@ Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
 #ifdef NATIVE
   Cell_t c, i = 0 ;
   
+  str_set( buf, 0, len ) ;
   while( i < len )
   {
-    c = uart_getc();
-    if( ch_matches( c, "\r\n" ) ) break ;
-    if( c > 0 )
-      buf[i++] = c ;
+    buf[i++] = c = uart_getc();
+    if( c == 0x15 )
+    {
+       str_set( buf, 0, len ) ;
+       int slen = str_length( buf ) ;
+       uart_putc( 0x0a ) ;
+       for( int x = 0 ; x < slen; x++ )
+           uart_putc( 0x20 ) ;
+       uart_putc( 0x0a ) ;
+       i = 0 ;
+       continue ;
+    }
+    if( c == 0x08 )
+    {
+       buf[--i] = 0x00 ;
+       i = i < 0 ? 0 : i ;
+       buf[i] = 0x00 ;
+       uart_putc( 0x20 ) ;
+       uart_putc( 0x08 ) ;
+       continue ;
+    }
+    if( c == 0x0d )
+    {
+       uart_putc( 0x0a ) ;
+       break ;
+    }
   }
   return i ;
 #endif
@@ -2904,6 +2932,8 @@ void utime(){
 
   gettimeofday( &tv, NULL ) ;
   push( ( tv.tv_sec * 1000000 ) + tv.tv_usec ) ;
+#else
+  push( -1 ) ;
 #endif
 }
 
