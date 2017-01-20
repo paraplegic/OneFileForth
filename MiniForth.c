@@ -96,6 +96,11 @@
 
 #endif
 
+#define sz_INBUF		127		/* bytes */
+#define sz_STACK		32		/* cells */
+#define sz_FLASH		16384		/* cells */
+#define sz_ColonDefs 	1024		/* # entries */
+
 #ifdef HOSTED
 #include <stdlib.h>
 #include <fcntl.h>
@@ -107,14 +112,11 @@
 #include <sys/stat.h>
 #include <dlfcn.h>
 volatile sig_atomic_t sigval = 0 ;
+
 #if !defined( __WIN32__ )
 struct termios tty_normal_state ;
 #endif
 #define FLAVOUR 		"Hosted"
-#define sz_ColonDefs 	1024		/* # entries */
-#define sz_FLASH		16384		/* cells */
-#define sz_STACK		32			/* cells */
-#define sz_INBUF		127			/* bytes */
 #define sz_FILES		5			/* nfiles */
 int  					in_This = 0, in_files[ sz_FILES ] = { 0 } ;
 int  					out_This = 0, out_files[ sz_FILES ] = { 1 } ;
@@ -125,11 +127,6 @@ jmp_buf env ;
 
 #ifdef NATIVE
 #define FLAVOUR 		"Native"
-#define sz_ColonDefs 	1024		/* # entries */
-#define sz_FLASH		16384	/* cells */
-#define sz_STACK		32		/* cells */
-#define sz_INBUF		127		/* bytes */
-#define sz_FILES		5		/* nfiles */
 #define INPUT			0
 #define OUTPUT			1
 #ifndef NULL
