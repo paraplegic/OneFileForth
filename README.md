@@ -1,16 +1,13 @@
-OneFileForth
--=-=-=-=-=-=
+#OneFileForth
 
 	A single file implementation of a non-standard Forth written in the FIG style
 	This project is hosted on GitHub, and can be cloned as follows:
 
 		git clone http://github.com/paraplegic/OneFileForth .
 
-Building:
--=-=-=-=
+#Building:
 
-	HOSTED:
-	-=-=-=
+	#HOSTED:
 
 	This project should make out of the box on most HOSTED systems, and particularly
 	on Linux and/or BSD:
@@ -22,8 +19,7 @@ Building:
 		-- www.ControlQ.com
 		ok 
 
-	NATIVE:
-	-=-=-=
+	#NATIVE:
 
 	OneFileForth will build using the arm-eabi-none or arm-eabi-linux toolchain, and will 
 	build for the ARM versatilepb under QEMU.  Similar in most respects to the hosted version,
@@ -55,17 +51,15 @@ Building:
 	but as I don't run DOS/Windows, I have no need for Cygwin.  Sorry, you're on your
 	own.
 
-Running
--=-=-=-
+#Running
 		*TBD*
 
-Tested
--=-=-=
+#Tested
 
-	Hosted:
+	#Hosted:
 	FreeBSD 10.2
 	Debian  Jesse
 	OSX  ??
 
-	Native:
+	#Native:
 	Qemu ARM VersatilePB
