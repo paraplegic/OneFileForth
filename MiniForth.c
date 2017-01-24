@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"31"
+#define REVISION	"33"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -259,6 +259,9 @@ void prompt();
 void words(); 
 void depth(); 
 void dupe(); 
+void rot(); 
+void nip(); 
+void tuck(); 
 void qdupe(); 
 void drop(); 
 void over(); 
@@ -429,6 +432,9 @@ Dict_t Primitives[] = {
   { depth,	"depth", Normal, NULL },
   { dupe,	"dup", Normal, NULL },
   { qdupe,	"?dup", Normal, NULL },
+  { rot,	"rot", Normal, NULL },
+  { nip,	"nip", Normal, NULL },
+  { tuck,	"tuck", Normal, NULL },
   { drop,	"drop", Normal, NULL },
   { over,	"over", Normal, NULL },
   { swap,	"swap", Normal, NULL },
@@ -1598,7 +1604,7 @@ void depth(){
   push( d ) ; 
 }
 
-void dupe(){
+void dupe(){ // n1 -- n1 n1
   register Cell_t n ;
 
   chk( 1 ) ; 
@@ -1606,7 +1612,7 @@ void dupe(){
   push( n ) ;
 }
 
-void qdupe(){
+void qdupe(){ // n1 != 0 ? -- n1 n1 : n1
   register Cell_t n ;
 
   chk( 1 ) ; 
@@ -1617,8 +1623,37 @@ void qdupe(){
   }
 }
 
+void rot(){ // n1 n2 n3 -- n2 n3 n1
+  register Cell_t n ;
+
+  chk( 3 ) ;
+
+  n = *(tos-2) ;
+  *(tos-2) = *(tos-1) ;
+  *(tos-1) = *(tos) ;
+  *tos = n ;
+}
+
+void nip(){ // n1 n2 -- n2
+
+  chk( 2 ) ;
+
+  swap() ;
+  drop() ;
+}
+
+void tuck(){ // n1 n2 -- n2 n1 n2
+
+  chk( 2 ) ;
+
+  dupe() ;
+  rot() ;
+  swap() ;
+}
+
 void drop(){
   chk( 1 ) ; 
+
   tos-- ;
 }
 
