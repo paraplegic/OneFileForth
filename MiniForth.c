@@ -395,6 +395,12 @@ void do_loop();
 void ploop();
 void do_ploop();
 void forget();
+void fmt_start();
+void fmt_digit();
+void fmt_num();
+void fmt_hold();
+void fmt_sign();
+void fmt_end();
 
 /*
   -- dictionary is simply an array of struct ...
@@ -520,6 +526,8 @@ Dict_t Primitives[] = {
   { or,		"or", Normal, NULL },
   { xor,	"xor", Normal, NULL },
   { not,	"not", Normal, NULL },
+  { Tmp,	"tmp", Normal, NULL },
+  { SCratch,	"scratch", Normal, NULL },
   { pad,	"pad", Normal, NULL },
   { comment,	"(", Immediate, NULL },
   { dotcomment,	".(", Immediate, NULL },
@@ -561,6 +569,12 @@ Dict_t Primitives[] = {
   { ploop,	"+loop", Immediate, NULL },
   { do_ploop,	"(+loop)", Normal, NULL },
   { forget,	"forget", Normal, NULL },
+  { fmt_start,	"<#", Normal, NULL },
+  { fmt_digit,	"#", Normal, NULL },
+  { fmt_num,	"#s", Normal, NULL },
+  { fmt_hold,	"hold", Normal, NULL },
+  { fmt_sign,	"sign", Normal, NULL },
+  { fmt_end,	"#>", Normal, NULL },
   { NULL, 	NULL, 0, NULL }
 } ;
 
@@ -1995,10 +2009,12 @@ void unssave(){
 
 void SCratch(){
   push( (Cell_t) scratch ) ;
+  push( (Cell_t) sz_INBUF ) ;
 }
 
 void Tmp(){
   push( (Cell_t) tmp ) ;
+  push( (Cell_t) sz_INBUF ) ;
 }
 
 void pad(){
@@ -2543,15 +2559,15 @@ Wrd_t io_cbreak( int fd ){
 }
 
 
-void Memset(){	/* ( ptr val len -- ) */
+void Memset(){	/* ( val ptr len -- ) */
   Byt_t byt ;
   Str_t ptr ;
   Wrd_t len ;
 
   chk( 3 ) ; 
   len = (Wrd_t) pop() ;
-  byt = (Byt_t) pop() & 0xff ;
   ptr = (Str_t) pop() ;
+  byt = (Byt_t) pop() & 0xff ;
   str_set( ptr, byt, len ) ;
 }
 
@@ -3046,4 +3062,58 @@ void forget()
   DictPtr = (Cell_t *) StartOf( flash ) ;		// set the dictptr to here ...
   String_Data = (Byt_t *) (&flash[sz_FLASH] - 1) ;	// erase the string data referenced in the dictionary
   n_ColonDefs = 0 ; 					// uncount the colon defs ... 
+}
+
+void fmt_start() 	// ( n -- <ptr> n ) 
+{
+  push( 0 ) ; 
+  Tmp() ;
+  Memset() ;
+  Tmp() ;
+  add() ;
+  swap() ;
+}
+
+void fmt_digit()	// ( <ptr> n -- <ptr> n2 ) : # dup base @ % . base @ / ;
+{
+  register Cell_t n, digit ;
+
+  n = pop() ;
+  digit = n % Base ;
+  n /= Base ;
+  dupe() ;
+  push( digit ) ;
+  swap() ;
+  byt_store() ;
+  (*tos) -= 1 ;
+  push( n ) ;
+}
+
+void fmt_hold() // ( <ptr> n -- <ptr> )
+{
+  over() ;
+  byt_store() ;
+  (*tos) -= 1 ;
+}
+
+void fmt_sign() // ( <ptr> n -- <ptr> n )
+{
+  if( *tos < 0 )
+  {
+    over() ;
+    push( (Cell_t) '-' );
+    swap() ;
+    byt_store() ;
+    nos -= 1 ;
+  }
+}
+
+void fmt_num()
+{
+  while( *tos ) fmt_digit() ;
+}
+
+void fmt_end()
+{
+  return ;
 }
