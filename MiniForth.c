@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"31"
+#define REVISION	"33"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -96,6 +96,11 @@
 
 #endif
 
+#define sz_INBUF		127		/* bytes */
+#define sz_STACK		32		/* cells */
+#define sz_FLASH		16384		/* cells */
+#define sz_ColonDefs 	1024		/* # entries */
+
 #ifdef HOSTED
 #include <stdlib.h>
 #include <fcntl.h>
@@ -107,14 +112,11 @@
 #include <sys/stat.h>
 #include <dlfcn.h>
 volatile sig_atomic_t sigval = 0 ;
+
 #if !defined( __WIN32__ )
 struct termios tty_normal_state ;
 #endif
 #define FLAVOUR 		"Hosted"
-#define sz_ColonDefs 	1024		/* # entries */
-#define sz_FLASH		16384		/* cells */
-#define sz_STACK		32			/* cells */
-#define sz_INBUF		127			/* bytes */
 #define sz_FILES		5			/* nfiles */
 int  					in_This = 0, in_files[ sz_FILES ] = { 0 } ;
 int  					out_This = 0, out_files[ sz_FILES ] = { 1 } ;
@@ -125,14 +127,11 @@ jmp_buf env ;
 
 #ifdef NATIVE
 #define FLAVOUR 		"Native"
-#define sz_ColonDefs 	1024		/* # entries */
-#define sz_FLASH		16384	/* cells */
-#define sz_STACK		32		/* cells */
-#define sz_INBUF		127		/* bytes */
-#define sz_FILES		5		/* nfiles */
 #define INPUT			0
 #define OUTPUT			1
+#ifndef NULL
 #define NULL			0
+#endif
 #endif
 
 #if _WORDSIZE == 2
@@ -260,6 +259,9 @@ void prompt();
 void words(); 
 void depth(); 
 void dupe(); 
+void rot(); 
+void nip(); 
+void tuck(); 
 void qdupe(); 
 void drop(); 
 void over(); 
@@ -436,6 +438,9 @@ Dict_t Primitives[] = {
   { depth,	"depth", Normal, NULL },
   { dupe,	"dup", Normal, NULL },
   { qdupe,	"?dup", Normal, NULL },
+  { rot,	"rot", Normal, NULL },
+  { nip,	"nip", Normal, NULL },
+  { tuck,	"tuck", Normal, NULL },
   { drop,	"drop", Normal, NULL },
   { over,	"over", Normal, NULL },
   { swap,	"swap", Normal, NULL },
@@ -1613,7 +1618,7 @@ void depth(){
   push( d ) ; 
 }
 
-void dupe(){
+void dupe(){ // n1 -- n1 n1
   register Cell_t n ;
 
   chk( 1 ) ; 
@@ -1621,7 +1626,7 @@ void dupe(){
   push( n ) ;
 }
 
-void qdupe(){
+void qdupe(){ // n1 != 0 ? -- n1 n1 : n1
   register Cell_t n ;
 
   chk( 1 ) ; 
@@ -1632,8 +1637,37 @@ void qdupe(){
   }
 }
 
+void rot(){ // n1 n2 n3 -- n2 n3 n1
+  register Cell_t n ;
+
+  chk( 3 ) ;
+
+  n = *(tos-2) ;
+  *(tos-2) = *(tos-1) ;
+  *(tos-1) = *(tos) ;
+  *tos = n ;
+}
+
+void nip(){ // n1 n2 -- n2
+
+  chk( 2 ) ;
+
+  swap() ;
+  drop() ;
+}
+
+void tuck(){ // n1 n2 -- n2 n1 n2
+
+  chk( 2 ) ;
+
+  dupe() ;
+  rot() ;
+  swap() ;
+}
+
 void drop(){
   chk( 1 ) ; 
+
   tos-- ;
 }
 
@@ -2510,22 +2544,29 @@ void see(){
 }
 
 /*
-  -- I/O routines ...
+  -- I/O routines --
+
   must be written for the Atmel AVR's, but
-  Linux/Unix/Windows can simply use read/write.
+  any HOSTED (Linux/Unix/Windows) system can simply use read/write.
   key and ?key are special cases (len == 1), 
   and cbreak has been added for processing for tty's.
+
+  For Native ARM based systems, we will be implementing uart put/get functions
+  and a get without echo (for key) ... 
 
 */
 
 Wrd_t put_str( Str_t s ){
+
   register Cell_t n = 0;
+
   if( !isNul( s ) ){
     n = str_length( s ) ; 
     outp( OUTPUT, s, n ) ;
     outp( OUTPUT, " ", 1 ) ;
   }
   return n ;
+
 }
 
 Wrd_t io_cbreak( int fd ){
@@ -2554,7 +2595,7 @@ Wrd_t io_cbreak( int fd ){
   return inCbreak ;
 #endif
 #else
-  return 1 ;
+  return v_On ;
 #endif
 }
 
@@ -2781,7 +2822,7 @@ Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
   return read( fd, buf, len ) ;
 #else
 #ifdef NATIVE
-  Cell_t c, i = 0 ;
+  Cell_t c, x, i = 0 ;
   
   str_set( buf, 0, len ) ;
   while( i < len )
@@ -2792,7 +2833,7 @@ Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
        str_set( buf, 0, len ) ;
        int slen = str_length( buf ) ;
        uart_putc( 0x0a ) ;
-       for( int x = 0 ; x < slen; x++ )
+       for( x = 0 ; x < slen; x++ )
            uart_putc( 0x20 ) ;
        uart_putc( 0x0a ) ;
        i = 0 ;
