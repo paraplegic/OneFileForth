@@ -16,7 +16,8 @@ SRC =MiniForth.c
 OBJ =mff forth
 FAST=-D NOCHECK
 CCOPT=-g -O0
-OSTYPE = $(shell uname -s)
+OSTYPE != uname -s
+
 
 include $(OSTYPE).mk
 

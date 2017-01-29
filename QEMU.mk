@@ -1,5 +1,5 @@
 
-OSTYPE = $(shell uname -s)
+OSTYPE != uname -s
 
 include $(OSTYPE).mk
 

@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"33"
+#define REVISION	"34"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -198,6 +198,7 @@ typedef uWrd_t		uCell_t ;
 #define fmt( x, ... ) 	str_format( (Str_t) StartOf( tmp_buffer ), (Wrd_t) sz_INBUF, x, ## __VA_ARGS__ )
 #define __THIS__        ( (Str_t) __FUNCTION__ )
 #define throw( x )	err_throw( str_error( (char *) err_buffer, sz_INBUF, __THIS__, __LINE__), x )
+#define Abs( x )	((x < 0) ? (x*-1) : x) 
 #ifdef NOCHECK
 #define chk( x )	{}
 #define dbg		'F'
@@ -251,6 +252,7 @@ void mult();
 void exponent(); 
 void divide(); 
 void modulo(); 
+void absolute(); 
 void dotS(); 
 void dot(); 
 void udot(); 
@@ -430,6 +432,7 @@ Dict_t Primitives[] = {
   { exponent,	"^", Normal, NULL },
   { divide,	"/", Normal, NULL },
   { modulo,	"%", Normal, NULL },
+  { absolute,	"abs", Normal, NULL },
   { dotS,	".s", Normal, NULL },
   { dot,	".", Normal, NULL },
   { udot,	"u.", Normal, NULL },
@@ -1347,6 +1350,11 @@ void modulo(){
     return ;
   }
   *tos %= n ; 
+}
+
+void absolute() // -n -- n 
+{
+  *tos = Abs( *tos ) ;
 }
 
 void dotS(){
@@ -3105,56 +3113,74 @@ void forget()
   n_ColonDefs = 0 ; 					// uncount the colon defs ... 
 }
 
-void fmt_start() 	// ( n -- <ptr> n ) 
+int sign_is_negative = 0 ; 
+
+void fmt_start() 	// ( n -- <ptr> n )
 {
+  sign_is_negative = 0 ;
   push( 0 ) ; 
   Tmp() ;
-  Memset() ;
+  Memset() ;	// clear out the tmp buffer ...
   Tmp() ;
-  add() ;
+  add() ; 	// this buffer fills backwards 
+  minusminus() ;
   swap() ;
+  fmt_sign() ;
 }
 
-void fmt_digit()	// ( <ptr> n -- <ptr> n2 ) : # dup base @ % . base @ / ;
+void fmt_digit()	// ( <ptr> n -- <ptr-1> n2 ) : # dup base @ % . base @ / ;
 {
   register Cell_t n, digit ;
 
-  n = pop() ;
-  digit = n % Base ;
-  n /= Base ;
-  dupe() ;
-  push( digit ) ;
-  swap() ;
-  byt_store() ;
-  (*tos) -= 1 ;
-  push( n ) ;
+  if( *tos )
+  {
+    fmt_sign() ;
+    n = pop() ;
+    digit = ( (Abs( n ) % Base) + '0' ) & 0xff ;
+    n /= Base ;
+    dupe() ;
+    push( digit ) ;
+    swap() ;
+    byt_store() ;
+    (*tos) -= 1 ;
+    push( n ) ;
+  } else {
+    push( (Cell_t) '0' ) ;
+    fmt_hold() ;
+  }
 }
 
-void fmt_hold() // ( <ptr> n -- <ptr> )
+void fmt_hold() // ( <ptr> x n -- <ptr-1> x )
 {
-  over() ;
-  byt_store() ;
-  (*tos) -= 1 ;
+  Cell_t n ;
+  Str_t ptr ;
+
+  n = pop() ;
+  ptr = (Str_t) nos ;
+  *ptr = Abs( n ) & 0xff ;
+  nos = (Cell_t) --ptr ;
 }
 
 void fmt_sign() // ( <ptr> n -- <ptr> n )
 {
-  if( *tos < 0 )
+  if( *tos != 0 && *tos < 0 )
   {
-    over() ;
-    push( (Cell_t) '-' );
-    swap() ;
-    byt_store() ;
-    nos -= 1 ;
+    sign_is_negative = 1 ;
   }
 }
 
-void fmt_num()
+void fmt_num() // ( <ptr> n -- <ptr*> 0 )
 {
   while( *tos ) fmt_digit() ;
 }
 
-void fmt_end()
+void fmt_end() // ( <ptr> n -- <ptr+1> ) 
 {
-  return ;
+  if( sign_is_negative )
+  {
+    push( (Cell_t) '-' ) ;
+    fmt_hold() ;
+  }
+  drop() ;
+  plusplus() ;
 }
