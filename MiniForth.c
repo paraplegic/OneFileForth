@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"34"
+#define REVISION	"35"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -57,6 +57,7 @@
 #include <unistd.h>
 #include <termios.h>
 #include <time.h>
+#include <locale.h>
 #define HOSTED
 #endif 
 
@@ -69,6 +70,7 @@
 #include <sys/types.h>
 #include <sys/select.h>
 #include <time.h>
+#include <locale.h>
 #define HOSTED
 #endif
 
@@ -239,6 +241,8 @@ Byt_t  tmp_buffer[sz_INBUF] ;
 Str_t  tmp  = (Str_t) StartOf( tmp_buffer ) ;
 uCell_t _ops = 0 ; 
 
+Byt_t  Locale[sz_STACK];
+
 /*
   -- forth primitives must be pre-declared ...
 */
@@ -405,6 +409,7 @@ void fmt_num();
 void fmt_hold();
 void fmt_sign();
 void fmt_end();
+void utf8_encode();
 
 /*
   -- dictionary is simply an array of struct ...
@@ -583,6 +588,7 @@ Dict_t Primitives[] = {
   { fmt_hold,	"hold", Normal, NULL },
   { fmt_sign,	"sign", Normal, NULL },
   { fmt_end,	"#>", Normal, NULL },
+  { utf8_encode, "utf8", Normal, NULL }, // ( ch buf len -- len )
   { NULL, 	NULL, 0, NULL }
 } ;
 
@@ -703,6 +709,7 @@ Str_t str_cache( Str_t tag );
 Str_t str_uncache( Str_t tag );
 Wrd_t ch_matches( Byt_t ch, Str_t anyOf );
 Byt_t ch_tolower( Byt_t b );
+Wrd_t utf8_encoder( Wrd_t ch, Str_t buf, Wrd_t len );
 Wrd_t ch_index( Str_t str, Byt_t c );
 void sig_hdlr( int sig );
 Wrd_t io_cbreak( int fd );
@@ -860,6 +867,8 @@ int main( int argc, char **argv ){
 #endif
 
 #ifdef HOSTED
+  
+  str_copy( (Str_t) Locale, setlocale( LC_ALL, "" ), sz_STACK ) ;
   q_reset() ;
   chk_args( argc, argv ) ;
   if( !quiet ) 
@@ -875,6 +884,7 @@ int main( int argc, char **argv ){
       execute() ;
   }
 #else
+  str_copy( (Str_t) Locale, "EMBEDDED", 9 ) ;
   q_reset() ;
   banner() ;
 #endif
@@ -899,6 +909,39 @@ Byt_t ch_tolower( Byt_t b ){
   return b ^ 0x20 ;
  }
  return b & 0xFF ;
+}
+
+Wrd_t utf8_encoder( Wrd_t ch, Str_t buf, Wrd_t len )
+{
+
+  str_set( buf, len, 0 ) ;
+  if (ch < 0x80) {
+        buf[0] = (char)ch;
+        return( 1 ) ;
+  }
+
+  if (ch < 0x800) {
+        buf[0] = (ch>>6) | 0xC0;
+        buf[1] = (ch & 0x3F) | 0x80;
+	return( 2 ) ;
+  }
+
+  if (ch < 0x10000) {
+        buf[0] = (ch>>12) | 0xE0;
+        buf[1] = ((ch>>6) & 0x3F) | 0x80;
+        buf[2] = (ch & 0x3F) | 0x80;
+        return( 3 );
+  }
+
+  if (ch < 0x110000) {
+        buf[0] = (ch>>18) | 0xF0;
+        buf[1] = ((ch>>12) & 0x3F) | 0x80;
+        buf[2] = ((ch>>6) & 0x3F) | 0x80;
+        buf[3] = (ch & 0x3F) | 0x80;
+        return( 4 ) ;
+  }
+
+  return( 0 ) ;
 }
 
 Wrd_t ch_index( Str_t str, Byt_t c ){
@@ -1272,7 +1315,7 @@ void quit(){
 void banner(){
   Wrd_t n ;
 
-  n = fmt( "-- MiniForth-%s alpha Version: %s.%s.%s%c\n", FLAVOUR, MAJOR, MINOR, REVISION, dbg ) ;
+  n = fmt( "-- MiniForth-%s alpha Version: %s.%s.%s%c (%s)\n", FLAVOUR, MAJOR, MINOR, REVISION, dbg, Locale ) ;
   outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
   n = fmt( "-- www.ControlQ.com\n" ) ;
   outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
@@ -2140,7 +2183,7 @@ void key(){
 
 void emit(){
   chk( 1 ) ; 
-  outp( OUTPUT, (Str_t) tmp_buffer, str_format( (Str_t) tmp_buffer, (Wrd_t) sz_INBUF, "%c", pop() ) ) ;
+  outp( OUTPUT, (Str_t) tmp_buffer, utf8_encoder( pop(), (Str_t) tmp_buffer, (Wrd_t) sz_INBUF ) ) ;
 }
 
 void type(){
@@ -3184,3 +3227,17 @@ void fmt_end() // ( <ptr> n -- <ptr+1> )
   drop() ;
   plusplus() ;
 }
+
+void utf8_encode()
+{
+  Cell_t ch, len ;
+  Str_t  buf ;
+
+  chk( 3 ) ;
+  len = (Wrd_t) pop() ;
+  buf = (Str_t) pop() ;
+  ch  = (Wrd_t) pop() ;
+
+  push( (Wrd_t) utf8_encoder( ch, buf, len ) ) ;
+}
+
