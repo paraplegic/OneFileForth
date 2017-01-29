@@ -1,0 +1,20 @@
+( 
+
+  ## Terminal escape sequences ## 
+
+  These words implement the ANS vt100 terminal escape commands using
+  a simple format string (built backwards).
+)
+
+0x1b constant esc
+0x5b constant lbr
+
+: to ( y x -- )   <# ascii H hold #s drop over ascii ; hold #s lbr hold esc hold #> type ;
+: up ( n -- )     <# ascii A hold #s lbr hold esc hold #> type ;
+: down ( n -- )   <# ascii B hold #s lbr hold esc hold #> type ;
+: fwd ( n -- )    <# ascii C hold #s lbr hold esc hold #> type ;
+: bwd ( n -- )    <# ascii D hold #s lbr hold esc hold #> type ;
+: c_sav ( -- )  0 <# ascii s hold lbr hold esc hold #> type ;
+: c_ret ( -- )  0 <# ascii u hold lbr hold esc hold #> type ;
+: clear ( -- )  2 <# ascii J hold #s lbr hold esc hold #> type ;
+
