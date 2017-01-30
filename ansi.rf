@@ -48,7 +48,6 @@ create single_box
 	bx_Vsr ,
 
 ( =============== )
-: kaccept ( ptr len -- ) swap >r 0 do key dup 0x0a == if r> leave then r> i + dup >r c! loop ;
 : t_to ( y x -- )   <# ascii H hold #s drop over ascii ; hold #s lbr hold esc hold #> type drop ;
 : t_up ( n -- )     <# ascii A hold #s lbr hold esc hold #> type ;
 : t_down ( n -- )   <# ascii B hold #s lbr hold esc hold #> type ;
@@ -56,8 +55,10 @@ create single_box
 : t_bwd ( n -- )    <# ascii D hold #s lbr hold esc hold #> type ;
 : t_c_sav ( -- )  0 <# ascii s hold lbr hold esc hold #> type ;
 : t_c_ret ( -- )  0 <# ascii u hold lbr hold esc hold #> type ;
+: t_c_loc ( -- )   6 <# ascii n hold #s lbr hold esc hold #> type ;
 : t_clear ( -- )  2 <# ascii J hold #s lbr hold esc hold #> type 0 0 t_to ;
-: t_size ( -- )   6 <# ascii n hold #s lbr hold esc hold #> type here 20 kaccept . ;
+: read ( -- ) tmp drop begin dup key ascii R over != while swap c! ++ repeat ." <done>" cr over c! 0 swap c! ; 
+: show ( -- ) tmp drop 1 + begin dup c@ 0 over != while emit ++ repeat emit drop ;
 
 
 : Point create , , does> dup @ swap 1 cells + @ ;
@@ -107,4 +108,4 @@ Box x
 
 ( tst key drop tst key drop tst key drop )
 
-11 11 t_to t_size here 20 kaccept 
+t_clear 12 44 t_to t_c_loc read t_clear show .s

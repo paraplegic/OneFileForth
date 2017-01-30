@@ -916,7 +916,7 @@ Byt_t ch_tolower( Byt_t b ){
 Wrd_t utf8_encoder( Wrd_t ch, Str_t buf, Wrd_t len )
 {
 
-  str_set( buf, len, 0 ) ;
+  str_set( buf, 0, len ) ;
   if (ch < 0x80) {
         buf[0] = (char)ch;
         return( 1 ) ;
@@ -1814,14 +1814,14 @@ void catch(){
         sz = fmt( "-- SIGSEGV (%d) is non recoverable.\n", sigval ) ;
         outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
 	dotS() ;
-        goto reset;
         goto die;
+        goto reset;
 	abort() ;
       }
       Fptr_t ok = signal( sigval, sig_hdlr ) ;
       sz = fmt( "-- Signal %d handled. (%x)\n", sigval, ok ) ;
       outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
-      break ;
+      goto reset;
 
     case err_SysCall:
       sz = fmt( "%s (%d)\n", errors[error_code], error_code ) ;
@@ -1991,7 +1991,7 @@ void byt_store(){
     throw( err_NullPtr ) ;
     return ;
   }
-  *p = n & 0xff ;
+  *p = (Byt_t) (n & 0xff) ;
 }
  
 void lft_shift(){
@@ -2160,17 +2160,16 @@ void q_key(){
   waitrdy() ;
   io_cbreak( INPUT ) ;
 #endif
-#else
+#endif
+#ifdef NATIVE
   push( uart_can_recv() );
 #endif
 }
 
 void key(){
-#ifdef WIN32
-    push( (Cell_t) (getch() & 0xff) ) ;
-    return  ;
-#else
 #ifdef HOSTED
+#if !defined( __WIN32__ )
+
   Byt_t ch ;
   Wrd_t x ;
 
@@ -2178,11 +2177,17 @@ void key(){
   inp( INPUT, (Str_t) &ch, 1 ) ;
   x = io_cbreak( INPUT ) ;
   push( ch & 0xff ) ;
+
 #else
-  push( (Cell_t) uart_getc_ne() & 0xff );
-#endif
+
+  push( (Cell_t) (getch() & 0xff) ) ;
 
 #endif
+#endif
+#ifdef NATIVE
+  push( (Cell_t) uart_getc_ne() & 0xff );
+#endif
+  return  ;
 }
 
 void emit(){
@@ -2712,31 +2717,22 @@ void sndtty(){ /* ( fd ptr -- nx ) */
 
 Wrd_t getstr( Wrd_t fd, Str_t buf, Wrd_t len ){
   Byt_t ch ;
-  Wrd_t i, n, crlf = 0 ; 
+  Wrd_t i, crlf = 0 ;
+
+  str_set( buf, 0, len ) ;
 
   i = 0 ; 
   do {
-    n = inp( fd, (Str_t) &ch, 1 ) ;
-    if( n == 0 ){
-      return i ;
-    }
-#ifdef HOSTED
-    if( n < 1 ){
-      if( errno != EAGAIN ){
-       throw( err_SysCall ) ;
-      }
-      return i ; 
-    }
-#endif
-    if( i > (len - 1) ){
-      return i ;
-    }
+    key() ; 
+    ch = (Byt_t) ( pop() & 0xff ) ;
     if( ch_matches( ch, "\r\n" ) ){ 
        crlf++ ;
     }
-    buf[i++] = ch ;
+    buf[i++] = (Byt_t) ch ;
+    if( i > (len - 1) ){
+      return i ;
+    }
   } while( crlf < 1 ) ;
-  buf[i-1] = (Byt_t) 0 ; 
   return i ;
 }
 
