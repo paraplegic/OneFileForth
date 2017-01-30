@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"36"
+#define REVISION	"37"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -185,8 +185,8 @@ typedef uWrd_t		uCell_t ;
 #define v_On		1
 #define push( x )	++tos; *(tos) = (Cell_t) x
 #define pop()		*(tos--)
-#define nos		tos[-1]
-#define rpush( x )	*(++rtos) = x
+#define nos			 tos[-1]
+#define rpush( x )	++rtos; *(rtos) = x
 #define rpop()		*(rtos--)
 #define upush( x )	*(++utos) = x
 #define upop()		*(utos--)
@@ -230,6 +230,8 @@ Cell_t *utos = StartOf( ustack ) ;
 /*
   -- an input and scratch buffers ...
 */
+Byt_t  garbage[sz_INBUF] ;
+
 Byt_t  input_buffer[sz_INBUF] ;
 Str_t  inbuf = (Str_t) StartOf( input_buffer ) ;
 
@@ -411,6 +413,7 @@ void fmt_sign();
 void fmt_end();
 void utf8_encode();
 void accept();
+void dump();
 
 /*
   -- dictionary is simply an array of struct ...
@@ -1813,10 +1816,7 @@ void catch(){
       if( sigval == SIGSEGV ){
         sz = fmt( "-- SIGSEGV (%d) is non recoverable.\n", sigval ) ;
         outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
-	dotS() ;
         goto die;
-        goto reset;
-	abort() ;
       }
       Fptr_t ok = signal( sigval, sig_hdlr ) ;
       sz = fmt( "-- Signal %d handled. (%x)\n", sigval, ok ) ;
@@ -1830,6 +1830,7 @@ void catch(){
       outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
       sz = fmt( "-- Thrown by %s.\n", error_loc ) ;
       outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+      goto reset;
       break ;
 #endif
 
@@ -1851,15 +1852,29 @@ void catch(){
       }
   }
 
- die:
-  sz = fmt( "-- Terminated.\n" ) ;
+  dump() ;
+  sz = fmt( "-- Stack Dump: Depth = " ) ;
   outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+  dotS() ;
+  cr() ;
+  goto reset;
 
+ die:
+  dump() ;
+  sz = fmt( "-- Stack Dump: Depth = " ) ;
+  outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+  dotS() ;
+  sz = fmt( "-- Abnormal Termination.\n" ) ;
+  outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
 #ifdef HOSTED
   exit( error_code ) ;
+#endif
 
  reset:
   q_reset() ;
+  sz = fmt( "-- Attempting Reset.\n" ) ;
+  outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+#ifdef HOSTED
   longjmp( env, 2 );
 #endif
 
@@ -2102,7 +2117,7 @@ void SCratch(){
 }
 
 void Tmp(){
-  push( (Cell_t) tmp ) ;
+  push( (Cell_t) garbage ) ;
   push( (Cell_t) sz_INBUF ) ;
 }
 
@@ -2173,9 +2188,9 @@ void key(){
   Byt_t ch ;
   Wrd_t x ;
 
-  x = io_cbreak( INPUT ) ;
+  while( ! io_cbreak( INPUT ) ) ;	// turn on cbreak ...
   inp( INPUT, (Str_t) &ch, 1 ) ;
-  x = io_cbreak( INPUT ) ;
+  x = io_cbreak( INPUT ) ; 			// turn off cbreak ...
   push( ch & 0xff ) ;
 
 #else
@@ -2185,9 +2200,10 @@ void key(){
 #endif
 #endif
 #ifdef NATIVE
+
   push( (Cell_t) uart_getc_ne() & 0xff );
+
 #endif
-  return  ;
 }
 
 void emit(){
@@ -2367,6 +2383,7 @@ void compile(){
         Here = save ;
         state = state_Interpret ;
         throw( err_BadString ) ;
+		put_str( tkn ) ;
         return ; /* like it never happened */
       }
       push( value ) ;
@@ -2448,7 +2465,7 @@ void doColon(){
   state = state_Interpret ;
 
   while( (p = (Cell_t **) rpop()) ) {
-    dp = (Dict_t *) *p ; ;
+    dp = (Dict_t *) *p ;
     if( isNul( dp ) ){
       break ;
     }
@@ -2839,7 +2856,7 @@ void outfile(){
 
 void closeout(){
 #ifdef HOSTED
-  if( OUTPUT > 1 ){
+  if( out_This > 0 ){
     close( OUTPUT ) ;
     out_This-- ;
   }
@@ -3257,4 +3274,29 @@ void accept()
 
   push( (Wrd_t) getstr( INPUT, buf, len ) ) ;
   
+}
+
+void dump()
+{
+  Cell_t  **p ;
+  Dict_t *dp ;
+
+  outp( OUTPUT, tmp_buffer, str_format( tmp_buffer, sz_INBUF, "-- Forth Backtrace:\n" ) ) ;
+  while( rtos != StartOf( rstack ) )
+  {
+    p = (Cell_t **) rpop() ;
+    if( !isNul( p ) )
+    {
+
+        dp = (Dict_t *) *p ;
+        if( !isNul( dp ) )
+		  outp( OUTPUT, tmp_buffer, str_format( tmp_buffer, sz_INBUF, "-- %x %x (%s)\n", (p), dp, dp->nfa ) ) ;
+
+        dp = (Dict_t *) *(p-1) ;
+        if( !isNul( dp ) )
+        {
+		  outp( OUTPUT, tmp_buffer, str_format( tmp_buffer, sz_INBUF, "-- %x %x (%s)\n", (p-1), dp, dp->nfa ) ) ;
+        }
+    }
+  }
 }

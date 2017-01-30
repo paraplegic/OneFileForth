@@ -48,6 +48,27 @@ create single_box
 	bx_Vsr ,
 
 ( =============== )
+( get coordinates from the ESC[<y>;<x>R sequence returned by t_c_loc ... )
+: parse_cursor_coordinates ( -- y x ) 
+	tmp drop 2 + 
+	0 >r
+	begin 
+		dup c@ ascii ; over != while
+			ascii 0 - r> dup 0 != if 10 * then + >r ++
+	repeat 
+	drop
+	++
+	0 >r
+	begin 
+		dup c@ ascii R over != while
+			ascii 0 - r> dup 0 != if 10 * then + >r ++
+	repeat 
+	drop
+	drop
+	r> r> swap
+;
+
+: Point create , , does> dup @ swap 1 cells + @ ;
 : t_to ( y x -- )   <# ascii H hold #s drop over ascii ; hold #s lbr hold esc hold #> type drop ;
 : t_up ( n -- )     <# ascii A hold #s lbr hold esc hold #> type ;
 : t_down ( n -- )   <# ascii B hold #s lbr hold esc hold #> type ;
@@ -55,13 +76,20 @@ create single_box
 : t_bwd ( n -- )    <# ascii D hold #s lbr hold esc hold #> type ;
 : t_c_sav ( -- )  0 <# ascii s hold lbr hold esc hold #> type ;
 : t_c_ret ( -- )  0 <# ascii u hold lbr hold esc hold #> type ;
-: t_c_loc ( -- )   6 <# ascii n hold #s lbr hold esc hold #> type ;
 : t_clear ( -- )  2 <# ascii J hold #s lbr hold esc hold #> type 0 0 t_to ;
-: read ( -- ) tmp drop begin dup key ascii R over != while swap c! ++ repeat ." <done>" cr over c! 0 swap c! ; 
-: show ( -- ) tmp drop 1 + begin dup c@ 0 over != while emit ++ repeat emit drop ;
+: t_c_loc ( -- )  6 <# ascii n hold #s lbr hold esc hold #> type
+	tmp drop
+	begin
+		key ascii R over != while
+			over c! ++
+	repeat
+	swap c! parse_cursor_coordinates
+;
 
+: t_size ( -- y x )
+  999 999 t_to t_c_loc
+;
 
-: Point create , , does> dup @ swap 1 cells + @ ;
 : p+ ( x y a b -- x+a y+b ) >r >r swap r> + swap r> + ;
 : Box create 4 allot ;
 
@@ -70,8 +98,8 @@ create single_box
 Box x
 	' boxpos x at + !
 	' single_box x style + !
-	25 x height + !
-	180 x width + !
+	82 x width + !
+	22 x height + !
 
 : box_pos dup at + @ execute ;
 : box_style dup style + @ execute ;
@@ -103,9 +131,3 @@ Box x
 		box_width 2 - t_fwd box_vt
 	loop 
 ;
-
-: tst t_clear noops utime x draw_box drop utime swap - . ops . ;
-
-( tst key drop tst key drop tst key drop )
-
-t_clear 12 44 t_to t_c_loc read t_clear show .s
