@@ -6,15 +6,105 @@
   a simple format string (built backwards).
 )
 
+( =============== )
 0x1b constant esc
 0x5b constant lbr
 
-: to ( y x -- )   <# ascii H hold #s drop over ascii ; hold #s lbr hold esc hold #> type ;
-: up ( n -- )     <# ascii A hold #s lbr hold esc hold #> type ;
-: down ( n -- )   <# ascii B hold #s lbr hold esc hold #> type ;
-: fwd ( n -- )    <# ascii C hold #s lbr hold esc hold #> type ;
-: bwd ( n -- )    <# ascii D hold #s lbr hold esc hold #> type ;
-: c_sav ( -- )  0 <# ascii s hold lbr hold esc hold #> type ;
-: c_ret ( -- )  0 <# ascii u hold lbr hold esc hold #> type ;
-: clear ( -- )  2 <# ascii J hold #s lbr hold esc hold #> type ;
+( =============== )
+0x2500 constant bx_Hor
+0x2502 constant bx_Ver
+0x250c constant bx_Upl
+0x2510 constant bx_Upr
+0x2514 constant bx_Lwl
+0x2518 constant bx_Lwr
+0x251c constant bx_Vsl
+0x2524 constant bx_Vsr
 
+( =============== )
+0 cells constant ul
+1 cells constant ur
+2 cells constant ll
+3 cells constant lr
+4 cells constant hl
+5 cells constant vl
+6 cells constant jl
+7 cells constant jr
+
+( =============== )
+0 cells constant at
+1 cells constant style
+2 cells constant height
+3 cells constant width
+
+( =============== )
+create single_box
+	bx_Upl ,
+	bx_Upr ,
+	bx_Lwl ,
+	bx_Lwr ,
+	bx_Hor ,
+	bx_Ver ,
+	bx_Vsl ,
+	bx_Vsr ,
+
+( =============== )
+: kaccept ( ptr len -- ) swap >r 0 do key dup 0x0a == if r> leave then r> i + dup >r c! loop ;
+: t_to ( y x -- )   <# ascii H hold #s drop over ascii ; hold #s lbr hold esc hold #> type drop ;
+: t_up ( n -- )     <# ascii A hold #s lbr hold esc hold #> type ;
+: t_down ( n -- )   <# ascii B hold #s lbr hold esc hold #> type ;
+: t_fwd ( n -- )    <# ascii C hold #s lbr hold esc hold #> type ;
+: t_bwd ( n -- )    <# ascii D hold #s lbr hold esc hold #> type ;
+: t_c_sav ( -- )  0 <# ascii s hold lbr hold esc hold #> type ;
+: t_c_ret ( -- )  0 <# ascii u hold lbr hold esc hold #> type ;
+: t_clear ( -- )  2 <# ascii J hold #s lbr hold esc hold #> type 0 0 t_to ;
+: t_size ( -- )   6 <# ascii n hold #s lbr hold esc hold #> type here 20 kaccept . ;
+
+
+: Point create , , does> dup @ swap 1 cells + @ ;
+: p+ ( x y a b -- x+a y+b ) >r >r swap r> + swap r> + ;
+: Box create 4 allot ;
+
+( =============== )
+10 10 Point boxpos
+Box x
+	' boxpos x at + !
+	' single_box x style + !
+	25 x height + !
+	180 x width + !
+
+: box_pos dup at + @ execute ;
+: box_style dup style + @ execute ;
+: box_height dup height + @ ;
+: box_width dup width + @ ;
+: box_ul box_style ul + @ emit ;
+: box_ur box_style ur + @ emit ;
+: box_ll box_style ll + @ emit ;
+: box_lr box_style lr + @ emit ;
+: box_hz box_style hl + @ emit ;
+: box_vt box_style vl + @ emit ;
+
+: draw_box ( box -- )
+	box_pos t_to box_ul
+	box_width 2 - 0 do
+		box_hz 
+	loop
+	box_ur
+	box_height >r 
+	box_pos r> 0 p+ t_to 
+	box_ll
+	box_width 2 - 0 do
+		box_hz
+	loop
+ 	box_lr
+	box_pos 1 0 p+ t_to
+	box_height 1 do
+		box_pos i 0 p+ t_to box_vt
+		box_width 2 - t_fwd box_vt
+	loop 
+;
+
+: tst t_clear noops utime x draw_box drop utime swap - . ops . ;
+
+( tst key drop tst key drop tst key drop )
+
+11 11 t_to t_size here 20 kaccept 

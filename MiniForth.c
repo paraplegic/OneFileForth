@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"35"
+#define REVISION	"36"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -410,6 +410,7 @@ void fmt_hold();
 void fmt_sign();
 void fmt_end();
 void utf8_encode();
+void accept();
 
 /*
   -- dictionary is simply an array of struct ...
@@ -488,7 +489,7 @@ Dict_t Primitives[] = {
   { execute,	"execute", Normal, NULL },
   { call,	"call", Normal, NULL },
   { doColon,	"(colon)", Normal, NULL },
-  { tick,	"'", Normal, NULL },
+  { tick,	"'", Immediate, NULL },
   { nfa,	">name", Normal, NULL },
   { cfa,	">code", Normal, NULL },
   { pfa,	">body", Normal, NULL },
@@ -589,6 +590,7 @@ Dict_t Primitives[] = {
   { fmt_sign,	"sign", Normal, NULL },
   { fmt_end,	"#>", Normal, NULL },
   { utf8_encode, "utf8", Normal, NULL }, // ( ch buf len -- len )
+  { accept,	"accept", Normal, NULL }, // ( buf len -- n )
   { NULL, 	NULL, 0, NULL }
 } ;
 
@@ -1722,7 +1724,7 @@ void drop(){
   tos-- ;
 }
 
-void over(){
+void over(){ // n1 n2 -- n1 n2 n1 
   register Cell_t n ;
 
   chk( 2 ) ; 
@@ -1811,8 +1813,10 @@ void catch(){
       if( sigval == SIGSEGV ){
         sz = fmt( "-- SIGSEGV (%d) is non recoverable.\n", sigval ) ;
         outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+	dotS() ;
         goto reset;
         goto die;
+	abort() ;
       }
       Fptr_t ok = signal( sigval, sig_hdlr ) ;
       sz = fmt( "-- Signal %d handled. (%x)\n", sigval, ok ) ;
@@ -2475,6 +2479,12 @@ void tick(){
     put_str( tkn ) ;
     throw( err_NoWord ) ;
   }
+  if( state == state_Compiling )
+  {
+    push( (Cell_t) lookup( "(literal)" ) ) ;
+    comma() ; 
+    comma();
+  }
 }
 
 void nfa(){
@@ -2725,7 +2735,7 @@ Wrd_t getstr( Wrd_t fd, Str_t buf, Wrd_t len ){
        crlf++ ;
     }
     buf[i++] = ch ;
-  } while( crlf < 2 ) ;
+  } while( crlf < 1 ) ;
   buf[i-1] = (Byt_t) 0 ; 
   return i ;
 }
@@ -3241,3 +3251,14 @@ void utf8_encode()
   push( (Wrd_t) utf8_encoder( ch, buf, len ) ) ;
 }
 
+void accept()
+{
+  Cell_t len ;
+  Str_t  buf ;
+
+  len = (Wrd_t) pop() ;
+  buf = (Str_t) pop() ;
+
+  push( (Wrd_t) getstr( INPUT, buf, len ) ) ;
+  
+}
