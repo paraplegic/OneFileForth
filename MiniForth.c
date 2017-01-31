@@ -3281,7 +3281,7 @@ void dump()
   Cell_t  **p ;
   Dict_t *dp ;
 
-  outp( OUTPUT, tmp_buffer, str_format( tmp_buffer, sz_INBUF, "-- Forth Backtrace:\n" ) ) ;
+  outp( OUTPUT, (Str_t) tmp_buffer, str_format( (Str_t) tmp_buffer, sz_INBUF, "-- Forth Backtrace:\n" ) ) ;
   while( rtos != StartOf( rstack ) )
   {
     p = (Cell_t **) rpop() ;
@@ -3290,12 +3290,12 @@ void dump()
 
         dp = (Dict_t *) *p ;
         if( !isNul( dp ) )
-		  outp( OUTPUT, tmp_buffer, str_format( tmp_buffer, sz_INBUF, "-- %x %x (%s)\n", (p), dp, dp->nfa ) ) ;
+		  outp( OUTPUT, (Str_t) tmp_buffer, str_format( (Str_t) tmp_buffer, sz_INBUF, "  -- %x %x (%s)\n", (p), dp, dp->nfa ) ) ;
 
         dp = (Dict_t *) *(p-1) ;
         if( !isNul( dp ) )
         {
-		  outp( OUTPUT, tmp_buffer, str_format( tmp_buffer, sz_INBUF, "-- %x %x (%s)\n", (p-1), dp, dp->nfa ) ) ;
+		  outp( OUTPUT, (Str_t) tmp_buffer, str_format( (Str_t) tmp_buffer, sz_INBUF, "  -- %x %x (%s)\n", (p-1), dp, dp->nfa ) ) ;
         }
     }
   }
