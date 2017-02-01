@@ -36,7 +36,7 @@ create bold_box
 ( =============== )
 ( get coordinates from the ESC[<y>;<x>R sequence returned by t_c_loc ... )
 : parse_cursor_coordinates ( -- y x ) 
-	tmp drop 2 + 
+	buf drop 2 + 
 	0 >r
 	begin 
 		dup c@ ascii ; over != while
@@ -64,7 +64,7 @@ create bold_box
 : t_c_ret ( -- )  0 <# ascii u hold lbr hold esc hold #> type ;
 : t_clear ( -- )  2 <# ascii J hold #s lbr hold esc hold #> type 0 0 t_to ;
 : t_c_loc ( -- )  6 <# ascii n hold #s lbr hold esc hold #> type
-	tmp drop
+	buf drop
 	begin
 	  key ascii R over
 	  != while
@@ -73,7 +73,6 @@ create bold_box
 	swap c! parse_cursor_coordinates
 ;
 : t_size ( -- y x ) 999 999 t_to t_c_loc ;
-
 
 ( =============== )
 0 cells constant at
@@ -128,11 +127,11 @@ create bold_box
 ( create box objects )
 ( ================== )
 Box bld
-	' bold bld at + !
-	' bold_box bld style + !
-	' draw_box bld method + !
-	82 bld width + !
-	22 bld height + !
+	' bold 		bld at + !
+	' bold_box	bld style + !
+	' draw_box	bld method + !
+			82	bld width + !
+			22	bld height + !
 
 Box sng 
 	' single sng at + !
@@ -156,8 +155,10 @@ Box dbl
 	10 dbl height + !
 
 : draw
+	utime
 	dbl paint
 	kul paint
 	sng paint
 	bld paint
+	utime swap - .
 ;

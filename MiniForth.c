@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"37"
+#define REVISION	"38"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -329,6 +329,7 @@ void pushPfa() ;
 void does() ;
 void allot() ;
 void create() ;
+void lambda() ;
 void constant() ;
 void variable() ;
 void pvState() ;
@@ -363,7 +364,7 @@ void or();
 void xor();
 void not();
 void SCratch();
-void Tmp();
+void Buf();
 void pad();
 void comment();
 void dotcomment();
@@ -414,6 +415,7 @@ void fmt_end();
 void utf8_encode();
 void accept();
 void dump();
+void find();
 
 /*
   -- dictionary is simply an array of struct ...
@@ -509,6 +511,7 @@ Dict_t Primitives[] = {
   { pushPfa,	"(variable)", Normal, NULL },
   { allot,	"allot", Normal, NULL },
   { create,	"create", Normal, NULL },
+  { lambda,	"lambda", Normal, NULL },  // ( <str> -- ) 
   { does,	"does>", Normal, NULL },
   { constant,	"constant", Normal, NULL },
   { variable,	"variable", Normal, NULL },
@@ -543,7 +546,7 @@ Dict_t Primitives[] = {
   { or,		"or", Normal, NULL },
   { xor,	"xor", Normal, NULL },
   { not,	"not", Normal, NULL },
-  { Tmp,	"tmp", Normal, NULL },
+  { Buf,	"buf", Normal, NULL },
   { SCratch,	"scratch", Normal, NULL },
   { pad,	"pad", Normal, NULL },
   { comment,	"(", Immediate, NULL },
@@ -594,6 +597,7 @@ Dict_t Primitives[] = {
   { fmt_end,	"#>", Normal, NULL },
   { utf8_encode, "utf8", Normal, NULL }, // ( ch buf len -- len )
   { accept,	"accept", Normal, NULL }, // ( buf len -- n )
+  { find,	"find", Normal, NULL }, // ( ptr -- dp | 0  )
   { NULL, 	NULL, 0, NULL }
 } ;
 
@@ -2116,7 +2120,7 @@ void SCratch(){
   push( (Cell_t) sz_INBUF ) ;
 }
 
-void Tmp(){
+void Buf(){
   push( (Cell_t) garbage ) ;
   push( (Cell_t) sz_INBUF ) ;
 }
@@ -2309,17 +2313,22 @@ void allot(){
 }
 
 void create(){
+  word();
+  lambda() ;
+}
+
+void lambda()
+{
   Str_t   tag ;
   Dict_t *dp ;
 
+  tag = (Str_t) pop() ;
   dp = &Colon_Defs[n_ColonDefs++] ;
 
-  word();
-  tag = (Str_t) pop() ;
-  dp ->nfa = str_cache( tag ) ; /* cache tag */
-  dp ->cfa = pushPfa ;
-  dp ->flg = Normal ;
-  dp ->pfa = Here ;
+  dp ->nfa = str_cache( tag ) ; // cache tag ..
+  dp ->cfa = pushPfa ;			// default behaviour (like variable)
+  dp ->pfa = Here ;				// pfa points to current 
+
 }
 
 void doConstant(){
@@ -3185,9 +3194,9 @@ void fmt_start() 	// ( n -- <ptr> n )
 {
   sign_is_negative = 0 ;
   push( 0 ) ; 
-  Tmp() ;
+  Buf() ;
   Memset() ;	// clear out the tmp buffer ...
-  Tmp() ;
+  Buf() ;
   add() ; 	// this buffer fills backwards 
   minusminus() ;
   swap() ;
@@ -3299,4 +3308,10 @@ void dump()
         }
     }
   }
+}
+
+void find() // ( strptr -- dp|0 )
+{
+  Str_t tkn = (Str_t) pop() ;
+  push( ((Dict_t *) lookup( (Str_t) tkn )) ) ;
 }
