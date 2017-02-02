@@ -115,6 +115,8 @@
 #include <dlfcn.h>
 volatile sig_atomic_t sigval = 0 ;
 
+#define MFF_PATH	"MFF_PATH"
+
 #if !defined( __WIN32__ )
 struct termios tty_normal_state ;
 #endif
@@ -242,8 +244,11 @@ Byt_t  err_buffer[sz_INBUF] ;
 Byt_t  tmp_buffer[sz_INBUF] ;
 Str_t  tmp  = (Str_t) StartOf( tmp_buffer ) ;
 uCell_t _ops = 0 ; 
+Byt_t	Locale[sz_STACK];
 
-Byt_t  Locale[sz_STACK];
+#ifdef HOSTED
+Str_t	mff_path = (Str_t) NULL ;
+#endif
 
 /*
   -- forth primitives must be pre-declared ...
@@ -389,6 +394,7 @@ void qdlclose();
 void qdlsym();
 void qdlerror();
 void spinner();
+void path();
 #endif /* HOSTED */
 void last_will();
 void callout();
@@ -563,16 +569,17 @@ Dict_t Primitives[] = {
   { opentty,	"opentty", Normal, NULL },
   { closetty,	"closetty", Normal, NULL },
   { sndtty,	"sndtty", Normal, NULL },
-  { rcvtty,	"rcvtty", Normal, NULL },
   { Memset,	"memset", Normal, NULL },
   { waitrdy,	"waitrdy", Normal, NULL },
 #ifdef HOSTED
+  { rcvtty,	"rcvtty", Normal, NULL },
   { qdlopen,	"dlopen", Normal, NULL },
   { qdlclose,	"dlclose", Normal, NULL },
   { qdlsym,	"dlsym", Normal, NULL },
   { qdlerror,	"dlerror", Normal, NULL },
   { last_will,	"atexit", Normal, NULL },
   { spinner,	"spin", Normal, NULL },
+  { path,	"path", Normal, NULL }, // ( -- ptr )
 #endif /* HOSTED */
   { callout,	"native", Normal, NULL },
   { clkspersec,	"clks", Normal, NULL },
@@ -878,6 +885,7 @@ int main( int argc, char **argv ){
 #ifdef HOSTED
   
   str_copy( (Str_t) Locale, setlocale( LC_ALL, "" ), sz_STACK ) ;
+  mff_path = getenv( MFF_PATH ) ;
   q_reset() ;
   chk_args( argc, argv ) ;
   if( !quiet ) 
@@ -2748,7 +2756,7 @@ void sndtty(){ /* ( fd ptr -- nx ) */
 
 Wrd_t getstr( Wrd_t fd, Str_t buf, Wrd_t len ){
   Byt_t ch ;
-  Wrd_t nx, i, crlf = 0 ;
+  Wrd_t i, crlf = 0 ;
 
   str_set( buf, 0, len ) ;
 
@@ -2774,6 +2782,7 @@ Wrd_t getstr( Wrd_t fd, Str_t buf, Wrd_t len ){
   return i ;
 }
 
+#ifdef HOSTED
 void rcvtty(){	/* ( fd n -- buf n ) */
   Str_t buf ;
   Wrd_t n, nr, fd ;
@@ -2790,6 +2799,7 @@ void rcvtty(){	/* ( fd n -- buf n ) */
   push( (Cell_t) nr ) ;
   return ;
 }
+#endif
 
 void opentty(){	/* ( str -- fd ) */
 #ifdef HOSTED
@@ -2834,13 +2844,21 @@ void infile(){
   Cell_t fd ;
 
   chk( 1 ) ; 
-
   Str_t fn = (Str_t) pop() ;
   if( !isNul( fn ) ){
     fd = open( fn, O_RDONLY ) ;
     if( fd < 0 ){
-      throw( err_NoFile ) ;
-      return ;
+	  if( !isNul( mff_path ) )
+      {
+	    str_format( tmp_buffer, sz_INBUF, "%s/%s", mff_path, fn ) ;
+		fn = tmp_buffer ;
+    	fd = open( fn, O_RDONLY ) ;
+        if( fd < 0 )
+		{
+      		throw( err_NoFile ) ;
+			return ;
+		}
+      }
     }
     in_files[++in_This] = fd ; 
     return ;
@@ -3329,3 +3347,10 @@ void find() // ( strptr -- dp|0 )
   Str_t tkn = (Str_t) pop() ;
   push( ((Dict_t *) lookup( (Str_t) tkn )) ) ;
 }
+
+#ifdef HOSTED
+void path()
+{
+	push( mff_path ) ; 
+}
+#endif

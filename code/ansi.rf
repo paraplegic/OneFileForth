@@ -160,5 +160,5 @@ Box dbl
 	kul paint
 	sng paint
 	bld paint
-	utime swap - .
+	utime swap - . ." usecs"
 ;

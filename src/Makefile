@@ -43,6 +43,9 @@ clean:
 	rm -rf *.bin
 	rm -rf *.list
 
+realclean:	clean
+	rm -rf $(OUT)/*
+
 edit:	$(SRC)
 	cscope -b $(SRC)
 
@@ -52,7 +55,7 @@ test:	$(OBJ) $(FRT)/test_00.rf
 	$(OUT)/forth -i $(FRT)/test_00.rf 
 	$(OUT)/forth -i $(FRT)/test_01.rf
 
-status:	clean
+status:	realclean
 	git status
 
 install: $(OBJ)
