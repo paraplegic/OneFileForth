@@ -2,7 +2,7 @@
 ## Trivial makefile for the OneFileForth project
 ## By default creates a "safe" interpreter (forth)
 ## which checks stack depth on all (?) primitives.
-## In addition the mff executable is generated with
+## In addition the off executable is generated with
 ## -D NOCHEK set on the compile line ... for time
 ## sensitive applications ...
 ##
@@ -14,8 +14,8 @@
 
 OUT =../bin
 FRT =../code
-SRC =MiniForth.c
-OBJ =$(OUT)/mff $(OUT)/forth
+SRC =OneFileForth.c
+OBJ =$(OUT)/off $(OUT)/offorth
 FAST=-D NOCHECK
 CCOPT=-g -O0
 OSTYPE != uname -s
@@ -24,13 +24,13 @@ include $(OSTYPE).mk
 
 all:	$(OBJ)
 
-$(OUT)/mff:	$(SRC)
+$(OUT)/off:	$(SRC)
 	@echo "OSTYPE is $(OSTYPE)"
 	@echo "Building for $(OSTYPE)"
 	$(CC) $(CCOPT) -o $@ $(FAST) $(LDOPTS) $(SRC) 
 	size $@
 
-$(OUT)/forth:	$(SRC)
+$(OUT)/offorth:	$(SRC)
 	$(CC) $(CCOPT) -o $@ $(LDOPTS) $(SRC)
 	size $@
 
@@ -50,10 +50,10 @@ edit:	$(SRC)
 	cscope -b $(SRC)
 
 test:	$(OBJ) $(FRT)/test_00.rf
-	$(OUT)/mff -i $(FRT)/test_00.rf 
-	$(OUT)/mff -i $(FRT)/test_01.rf
-	$(OUT)/forth -i $(FRT)/test_00.rf 
-	$(OUT)/forth -i $(FRT)/test_01.rf
+	$(OUT)/off -i $(FRT)/test_00.rf 
+	$(OUT)/off -i $(FRT)/test_01.rf
+	$(OUT)/offorth -i $(FRT)/test_00.rf 
+	$(OUT)/offorth -i $(FRT)/test_01.rf
 
 status:	realclean
 	git status
