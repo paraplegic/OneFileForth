@@ -1,37 +1,38 @@
 ( --- Object type programming in Forth -- )
 
+( -- Simplistic object using create/does> -- )
 : Point create , , does> dup @ swap 1 cells + @ ;
 : pt_add ( x y a b -- x+a y+b ) >r >r swap r> + swap r> + ;
 : pt_set-y ( n dp -- )	>body 2 cells - ! ;
 : pt_set-x ( n dp -- )	>body 1 cells - ! ;
 : pt_reset ( y x pfa -- ) dup rot swap pt_set-x pt_set-y ;
 
+( -- a struct like object -- )
 : {{ ( -- n ) 1 ;
-: cns ( off -- off++ ) dup ++ swap cells create , does> @ + @ ;
-: var ( off -- off++ ) dup ++ swap cells create , does> @ + ;
-: vrb ( off -- off++ ) dup ++ swap cells create , does> @ + @ dup if execute else ." unimplemented method" cr then ; 
-: do ( pfa off -- ) + @ execute ;
+: field ( off -- off++ ) dup ++ swap cells create , does> @ + ;
+: const ( off -- off++ ) dup ++ swap cells create , does> @ + @ ;
+: method ( off -- off++ ) dup ++ swap cells create , does> @ + @ dup if execute else ." unimplemented method" cr then ; 
 : .tag ( pfa -- ) @ ;
 : }} ( siz -- ) word save dup lambda , , does> dup @ create , 1 cells + @ allot does> ;
 
 : @++ ( ptr -- ptr+1) dup @ swap 1 cells + ;
 
 {{ 
-  vrb >at -- ( both a verb and a var at the first offset )
-  var .pos
-  var .size
-  var .style
-  var .draw
-  var .erase
-  vrb >move -- ( both a verb and a var at the last offset )
-  var .move
+  field .position 
+	-- method >at
+  field .size
+  field .style
+  field .draw
+  field .erase
+  field .move 
+	-- method >to
 }} Box
 
 Box a
 10 10 Point origin
 20 80 Point size
-' origin a .pos !
+' origin a .position !
 ' size a .size !
 
 a >at . . 
-a >move .s
+a >to .s
