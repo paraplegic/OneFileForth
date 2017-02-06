@@ -2850,8 +2850,8 @@ void infile(){
     if( fd < 0 ){
 	  if( !isNul( mff_path ) )
       {
-	    str_format( tmp_buffer, sz_INBUF, "%s/%s", mff_path, fn ) ;
-		fn = tmp_buffer ;
+	    str_format( (Str_t) tmp_buffer, sz_INBUF, "%s/%s", (Str_t) mff_path, (Str_t) fn ) ;
+		fn = (Str_t) tmp_buffer ;
     	fd = open( fn, O_RDONLY ) ;
         if( fd < 0 )
 		{

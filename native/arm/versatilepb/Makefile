@@ -31,3 +31,6 @@ qemu:	$(OUT)/OneFileForth-$(OS)-$(ARCH).bin
 
 clean:
 	rm -rf *.o *.bin *.list *.elf
+
+realclean:	clean
+	rm -rf $(OUT)/OneFileForth-$(OS)-$(ARCH).bin
