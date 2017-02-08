@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"40"
+#define REVISION	"41"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -98,10 +98,11 @@
 
 #endif
 
-#define sz_INBUF		127		/* bytes */
-#define sz_STACK		32		/* cells */
-#define sz_FLASH		16384		/* cells */
-#define sz_ColonDefs 	1024		/* # entries */
+#define sz_INBUF		127			// bytes
+#define sz_STACK		32			// cells
+#define sz_FLASH		16384		// cells
+#define sz_ColonDefs 	1024		// # entries
+
 
 #ifdef HOSTED
 #include <stdlib.h>
@@ -115,22 +116,23 @@
 #include <dlfcn.h>
 volatile sig_atomic_t sigval = 0 ;
 
-#define MFF_PATH	"MFF_PATH"
+#define OFF_PATH	"OFF_PATH"
 
 #if !defined( __WIN32__ )
 struct termios tty_normal_state ;
 #endif
 #define FLAVOUR 		"Hosted"
-#define sz_FILES		5			/* nfiles */
-int  					in_This = 0, in_files[ sz_FILES ] = { 0 } ;
+#define sz_FILES		4			/* nfiles */
+int  					in_This = -1, in_files[ sz_FILES ] = { 0 } ;
 int  					out_This = 0, out_files[ sz_FILES ] = { 1 } ;
-#define INPUT			in_files[ in_This ]
+#define INPUT			InputStack[ in_This ].file
 #define OUTPUT			out_files[ out_This ]
 jmp_buf env ;
 #endif
 
 #ifdef NATIVE
 #define FLAVOUR 		"Native"
+#define sz_FILES		1			/* nfiles */
 #define INPUT			0
 #define OUTPUT			1
 #ifndef NULL
@@ -234,8 +236,16 @@ Cell_t *utos = StartOf( ustack ) ;
 */
 Byt_t  garbage[sz_INBUF] ;
 
-Byt_t  input_buffer[sz_INBUF] ;
-Str_t  inbuf = (Str_t) StartOf( input_buffer ) ;
+Byt_t  input_buffer[ sz_FILES * sz_INBUF ] ;
+Byt_t *inbuf[] = {
+	(Byt_t *) (input_buffer + 0 * sz_INBUF),
+#ifdef HOSTED
+	(Byt_t *) (input_buffer + 1 * sz_INBUF),
+	(Byt_t *) (input_buffer + 2 * sz_INBUF),
+	(Byt_t *) (input_buffer + 3 * sz_INBUF),
+#endif // HOSTED
+	NULL
+} ;
 
 Byt_t  scratch_buffer[sz_INBUF] ;
 Str_t  scratch = (Str_t) StartOf( scratch_buffer ) ;
@@ -247,7 +257,7 @@ uCell_t _ops = 0 ;
 Byt_t	Locale[sz_STACK];
 
 #ifdef HOSTED
-Str_t	mff_path = (Str_t) NULL ;
+Str_t	off_path = (Str_t) NULL ;
 #endif
 
 /*
@@ -379,6 +389,7 @@ void count();
 void ssave();
 void unssave();
 void infile();
+void filename();
 void outfile();
 void closeout();
 void Memset();
@@ -432,6 +443,23 @@ typedef enum {
   Immediate,
   Undefined
 } Flag_t ;
+
+typedef struct _inbuf_ {
+  Wrd_t file ;
+  Wrd_t bytes_read ;
+  Wrd_t bytes_this ;
+  Str_t name ;
+  Str_t bytes ;
+} Input_t ;
+
+Input_t InputStack[sz_FILES] = {
+	{ .file=-1, .bytes_read=-1, .bytes_this=-1, .name=(Str_t) NULL, .bytes= (Str_t) &inbuf[0] },
+#ifdef HOSTED
+	{ .file=-1, .bytes_read=-1, .bytes_this=-1, .name=(Str_t) NULL, .bytes= (Str_t) &inbuf[1] },
+	{ .file=-1, .bytes_read=-1, .bytes_this=-1, .name=(Str_t) NULL, .bytes= (Str_t) &inbuf[2] },
+	{ .file=-1, .bytes_read=-1, .bytes_this=-1, .name=(Str_t) NULL, .bytes= (Str_t) &inbuf[3] },
+#endif // HOSTED
+} ;
 
 typedef struct _dict_ {
   Fptr_t  cfa ;
@@ -563,6 +591,7 @@ Dict_t Primitives[] = {
   { ssave,	"save", Normal, NULL },
   { unssave,	"unsave", Normal, NULL },
   { infile,	"infile", Normal, NULL },
+  { filename,	"filename", Normal, NULL },
   { outfile,	"outfile", Normal, NULL },
   { closeout,	"closeout", Normal, NULL },
   { Memset,	"memset", Normal, NULL },
@@ -652,6 +681,7 @@ typedef enum {
   err_SysCall,
   err_BadString,
   err_NoFile,
+  err_InStack,
   err_Undefined
 } Err_t ;
 
@@ -675,6 +705,7 @@ Str_t errors[] = {
   "-- System call glitch.",
   "-- Bad String.",
   "-- No file access.",
+  "-- Input stack overflow.",
   "-- Undefined error.",
   NULL,
 } ;
@@ -719,7 +750,7 @@ void str_set( Str_t dst, Byt_t dat, Wrd_t len );
 Wrd_t str_copy( Str_t dst, Str_t src, Wrd_t len );
 Wrd_t str_utoa( uByt_t *dst, Wrd_t dlen, Cell_t val, Wrd_t radix );
 Wrd_t str_ntoa( Str_t dst, Wrd_t dlen, Cell_t val, Wrd_t radix, Wrd_t isSigned );
-Str_t str_token( Str_t buf, Wrd_t len );
+Str_t str_token( Input_t *inptr );
 Str_t str_delimited( Str_t term ) ;
 Str_t str_cache( Str_t tag );
 Str_t str_uncache( Str_t tag );
@@ -808,7 +839,7 @@ void q_reset(){
   tos = StartOf( stack ) ; 
   rtos = StartOf( rstack ) ;
   error_code = err_OK ;
-  str_token( NULL, -1 ) ;
+  // str_token( NULL, -1 ) ;
   state = state_Interactive ;
 }
 
@@ -885,7 +916,9 @@ int main( int argc, char **argv ){
 #ifdef HOSTED
   
   str_copy( (Str_t) Locale, setlocale( LC_ALL, "" ), sz_STACK ) ;
-  mff_path = getenv( MFF_PATH ) ;
+  off_path = getenv( OFF_PATH ) ;
+  push( 0 ) ;
+  infile() ;
   q_reset() ;
   chk_args( argc, argv ) ;
   if( !quiet ) 
@@ -975,46 +1008,44 @@ Wrd_t ch_index( Str_t str, Byt_t c ){
   return -1;
 }
 
-Str_t str_token( Str_t buf, Wrd_t len ){
-  static int ch = -1 ;
-  static int nr = -1 ; 
-  int tkn ;
-
-  inbuf[0] = (Byt_t) 0 ;
-  if( isNul( buf ) || len < 0 ) { // reset requested ... toss inbuf ...
-    ch = nr = -1 ;
-    return (Str_t) NULL ; 
-  }
-
-  tkn = 0 ;
+Str_t str_token( Input_t *input )
+{
+  static Byt_t buf[sz_INBUF] ;
+  int tkn = 0 ;
+  buf[0] = (Byt_t) 0 ; // cheaper than zeroing entire buffer ...
   do {
+		if( input->bytes_read < 1 )
+		{
+			prompt() ;
+			input->bytes_read = inp( INPUT, input->bytes, sz_INBUF ) ;
+			if( input->bytes_read == 0 )
+			{
+				input->bytes[0] = (Byt_t) 0 ; 
+				return inEOF ;
+			}
+			input->bytes_this = 0 ; 
+			continue ;
+		}
 
-    if( nr < 1 ){ // prompt and get input ... 
-      prompt() ;
-      nr = inp( INPUT, (Str_t) inbuf, sz_INBUF ) ;
-      if( nr == 0 ) return inEOF ;
-      ch = 0 ;
-      continue ;
-    }
+		if( input->bytes_this > (input->bytes_read - 1) )
+		{
+			input->bytes_this = input->bytes_read = -1 ;
+			continue ;
+		}
 
-    if( ch > (nr-1) ){ // exhausted inbuf, need more input ...
-      ch = nr = -1 ; 
-      continue ;
-    }
+		if( !ch_matches( input->bytes[input->bytes_this++], WHITE_SPACE ) )
+		{
+			buf[tkn++] = input->bytes[input->bytes_this-1] ;
+			buf[tkn] = (Byt_t) 0 ; 
+			continue ; 
+		}
 
-    // note the side effect of the test below (ch++) ...
-    if( !ch_matches( inbuf[ch++], WHITE_SPACE ) ){ // printing char in inbuf[ch]
-      buf[tkn++] = inbuf[ch-1] ;
-      buf[tkn] = (Byt_t) 0 ;
-      continue ;
-    }
-
-    if( tkn > 0 ){ // white space in inbuf[ch] ...
-      return buf ;
-    }
+		if( tkn > 0 )
+		{
+			return buf ;
+		}
 
   } while( 1 ) ;
-  return (Str_t) NULL ; 
 }
 
 Str_t str_error( Str_t buf, Wrd_t len, Str_t fn, Wrd_t lin ){
@@ -1316,7 +1347,7 @@ void quit(){
   }
 #endif
   for(;;){
-    while( (tkn = str_token( scratch, sz_INBUF )) ){
+    while( (tkn = str_token( &InputStack[in_This] )) ){
       dp = lookup( tkn );
       if( isNul( dp ) ){
         push( str_literal( tkn, Base ) ) ;
@@ -1780,9 +1811,13 @@ void pick(){
 
 void Eof(){
 #ifdef HOSTED
-  if( in_This > 0 ){
-    push( 0 ) ; 
-    infile() ;
+  if( in_This > 0 )
+  {
+    if( in_This > 0 ){
+      close( INPUT ) ;
+	  put_str( InputStack[ in_This ].name ) ; 
+      in_This-- ;
+    }
     if( !isNul( in_Word ) && do_x_Once )
     {
       do_x_Once = 0 ; 
@@ -2157,7 +2192,7 @@ void cmove(){
 void word(){ 
   Str_t tkn ;
  
-  do { tkn = str_token( scratch, sz_INBUF ) ; } while ( isNul( tkn ) ) ;
+  do { tkn = str_token( &InputStack[ in_This ] ) ; } while ( isNul( tkn ) ) ;
   push( (Cell_t) tkn ) ;
 }
 
@@ -2385,7 +2420,7 @@ void compile(){
   dp ->cfa = doColon ;
 
   ++promptVal ;
-  while( (tkn = str_token( scratch, sz_INBUF )) ){
+  while( (tkn = str_token( &InputStack[ in_This ] )) ){
     if( isMatch( tkn, ";" ) ){
       semicolon() ;
       break ;
@@ -2839,7 +2874,58 @@ void closetty(){
 #endif
 }
 
-void infile(){
+void infile()
+{
+  Wrd_t fd ;
+  chk( 1 ) ;
+
+  Str_t fn = (Str_t) pop() ;
+
+  if( in_This < 0 )
+  {
+	in_This = 0 ;
+	InputStack[ in_This ].file = 0 ; 
+	InputStack[ in_This ].bytes_read = -1 ; 
+	InputStack[ in_This ].bytes_this = -1 ; 
+	InputStack[ in_This ].name = str_cache( "tty" ) ;
+	InputStack[ in_This ].bytes = inbuf[ in_This ] ; 
+	return ;
+  }
+
+  if( in_This < sz_FILES )
+  {
+    in_This++ ;
+	InputStack[ in_This ].bytes_read = -1 ; 
+	InputStack[ in_This ].bytes_this = -1 ; 
+    InputStack[ in_This ].name = str_cache( fn ) ;
+    InputStack[ in_This ].bytes = inbuf[ in_This ] ; 
+	if( !isNul( fn ) )
+	{
+		fd = open( fn, O_RDONLY ) ;
+		if( fd < 0 )
+		{
+			if( !isNul( off_path ) )
+			{
+				str_format( (Str_t) tmp_buffer, sz_INBUF, "%s/%s", (Str_t) off_path, (Str_t) fn ) ;
+				fn = (Str_t) tmp_buffer ;
+				fd = open( fn, O_RDONLY ) ;
+				if( fd < 0 )
+				{
+					throw( err_NoFile ) ;
+					return ;
+				}
+			}
+		}
+	}
+	InputStack[ in_This ].file = fd ;
+	return ;
+  }
+
+  throw( err_InStack ) ;
+  return ;
+
+}
+void infilex(){
 #ifdef HOSTED
   Cell_t fd ;
 
@@ -2848,9 +2934,9 @@ void infile(){
   if( !isNul( fn ) ){
     fd = open( fn, O_RDONLY ) ;
     if( fd < 0 ){
-	  if( !isNul( mff_path ) )
+	  if( !isNul( off_path ) )
       {
-	    str_format( (Str_t) tmp_buffer, sz_INBUF, "%s/%s", (Str_t) mff_path, (Str_t) fn ) ;
+	    str_format( (Str_t) tmp_buffer, sz_INBUF, "%s/%s", (Str_t) off_path, (Str_t) fn ) ;
 		fn = (Str_t) tmp_buffer ;
     	fd = open( fn, O_RDONLY ) ;
         if( fd < 0 )
@@ -2861,14 +2947,14 @@ void infile(){
       }
     }
     in_files[++in_This] = fd ; 
-    return ;
   } 
 
-  if( INPUT ){
-    close( INPUT ) ;
-    in_This-- ;
-  }
 #endif
+}
+
+void filename()
+{
+	push( (Str_t) InputStack[ in_This ].name ) ;
 }
 
 void outfile(){
@@ -3351,6 +3437,6 @@ void find() // ( strptr -- dp|0 )
 #ifdef HOSTED
 void path()
 {
-	push( mff_path ) ; 
+	push( off_path ) ; 
 }
 #endif

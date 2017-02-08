@@ -1,0 +1,121 @@
+
+.( loading ./.mf )
+: load dlopen constant ;					( <str> | NULL -- creates lib ptr )
+: entry dlsym dup 0 == if dlerror type cr then ;		( <lib> <str> -- <ptr> looks up a symbol in library )
+: code create , , does> dup @ swap 1 cells + @ native ; 	( ptr n -- creates new forth word to call C code )
+: .sep ." -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=" cr ;
+: .sd cr .sep . ." :::" .s cr .sep ; 
+: .space 32 emit ;
+' .space constant print_space
+: showkeys begin key dup ascii x == if . ." Exit" cr leave then . begin ?key while key . repeat again ;
+: times 0 begin over over - while 3 pick execute ++ repeat drop drop drop ; ( xt n -- )
+: .ss dup type print_space 10 times ; 
+.( ... done ) cr
+
+0 load _libc
+
+.( loading libc stuff )
+_libc " getuid"		entry 0 code uid
+_libc " getgid"		entry 0 code gid 
+_libc " time"		entry 1 code tick
+_libc " clock"		entry 0 code clock
+_libc " calloc" 	entry 2 code allocate
+_libc " free" 		entry 1 code free
+_libc " system" 	entry 1 code shell 
+_libc " gettimeofday"	entry 2 code tod 
+_libc " getenv"		entry 1 code env 
+.( ... done ) cr
+
+.( loading libQ.so )
+" libQ.so" load _qobj 
+.( ... done ) cr
+
+.( loading object entries )
+_qobj " ob_crt"         .ss entry 1 code new
+_qobj " ob_spawn"	.ss entry 2 code child
+_qobj " ob_is"		.ss entry 2 code is
+_qobj " ob_has"		.ss entry 3 code has
+_qobj " ob_fmt" 	.ss entry 4 code fmt
+_qobj " ob_strtyp" 	.ss entry 1 code cnv
+_qobj " sc_strTyp" 	.ss entry 1 code dcnv
+_qobj " sc_setType" 	.ss entry 1 code setType
+.( ... done ) cr
+
+( 0 .sd )
+
+.( loading labels )
+" label" save constant str_label
+" key"   save constant str_key
+" type"  save constant str_type
+.( ... done ) cr
+
+( 1 .sd )
+
+.( loading class constructs )
+" t_Schema"	dup type cnv dup . constant t_Schema cr
+" t_Class"	dup type cnv dup . constant t_Class cr
+" t_Menu"	dup type cnv dup . constant t_Menu cr
+" t_Field"	dup type cnv dup . constant t_Field cr
+" t_Trigger"	dup type cnv dup . constant t_Trigger cr
+" t_Tuple"	dup type cnv dup . constant t_Tuple cr
+.( ... done ) cr
+
+( 2 .sd )
+
+.( loading data types )
+" t_integer"   dup type dcnv dup . constant dbt_integer cr
+" t_string"    dup type dcnv dup . constant dbt_string cr
+" t_date"      dup type dcnv dup . constant dbt_date cr
+" t_timestamp" dup type dcnv dup . constant dbt_timestamp cr
+" t_double"    dup type dcnv dup . constant dbt_double cr
+.( ... done ) cr
+
+( 3 .sd )
+
+.( defining schema )
+" schema" new constant s
+s t_Schema is .
+s " person" child constant c 
+c t_Class is .
+c " id" child constant f 
+c str_key " id" has .
+
+( 4 .sd )
+
+f t_Field is drop 
+f str_label " Key Field" has drop
+f str_type " dbt_integer"  has drop
+.( ... done ) cr
+
+s 0 here 2048 fmt .
+." >>>>>>>>>>>>>" cr
+here type cr
+." >>>>>>>>>>>>>" cr
+
+( 5 .sd )
+
+: gt here 0 tod 0 == if here 4 + h@ else ." oops" cr then ; 
+: mips 0 begin 1 + dup 1000000 < while spin repeat .  ;
+: tm 0 tick ;
+: tx tm mips tm swap - . ;
+
+" html" save constant html
+" a "    save constant anchor
+
+: start ." <" type dup if ."  " type then drop ." >" ;
+: end   ." </" type ." >" ;
+
+: .html 0 html start ;
+: .html_end 0 html end ;
+: .anchor anchor start 0 anchor end ." This is a tag" 0 end ;
+
+
+( 6 .sd )
+
+.html cr
+"  href=www.controlq.com class=blue" .anchor 0 end cr
+.html_end . cr 
+
+( 7 .sd )
+: xxx ." do one time command" cr ; 
+.( done! ) cr
