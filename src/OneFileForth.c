@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"41"
+#define REVISION	"42"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -839,7 +839,6 @@ void q_reset(){
   tos = StartOf( stack ) ; 
   rtos = StartOf( rstack ) ;
   error_code = err_OK ;
-  // str_token( NULL, -1 ) ;
   state = state_Interactive ;
 }
 
@@ -1815,7 +1814,7 @@ void Eof(){
   {
     if( in_This > 0 ){
       close( INPUT ) ;
-	  put_str( InputStack[ in_This ].name ) ; 
+	  // put_str( InputStack[ in_This ].name ) ; 
       in_This-- ;
     }
     if( !isNul( in_Word ) && do_x_Once )
