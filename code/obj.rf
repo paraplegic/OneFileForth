@@ -16,7 +16,7 @@
 : {{ 1 ; ( -- n )
 : field ( off -- off++ ) dup ++ swap cells create , does> @ + ;
 : const ( off -- off++ ) dup ++ swap cells create , does> @ + @ ;
-: method ( off -- off++ ) dup ++ swap cells create , does> @ over + @ dup if execute else ." unimplemented method" cr then ;
+: method ( off -- off++ ) dup ++ swap cells create , does> @ over + @ dup if execute else drop ." unimplemented method" cr then ;
 : .tag ( pfa -- ) @ ;
 : }} ( siz -- ) word save dup lambda , , does> dup @ create , 1 cells + @ allot does> ;
 

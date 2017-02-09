@@ -80,33 +80,35 @@ BoxStyle s_bold
   field .style
 	-- method >style
   field .height
+	-- const .ht
   field .width
+	-- const .wd
   field .draw
 	-- method >draw
 }} Box
 
 : draw_box ( adr -- )
-	dup >at t_to 
-	dup >style >ul emit
-	dup .width @ 2 - 0 do
-		dup >style >hl emit
+	>at t_to 
+	>style >ul emit
+	dup .wd 2 - 0 do
+		>style >hl emit
 	loop
-	dup >style >ur emit
-	dup .height @ >r 
-	dup >at r> 0 pt_add t_to 
-	dup >style >ll emit
-	dup .width @ 2 - 0 do
-		dup >style >hl emit
+	>style >ur emit
+	dup .ht >r 
+	>at r> 0 pt_add t_to 
+	>style >ll emit
+	dup .wd 2 - 0 do
+		>style >hl emit
 	loop
- 	dup >style >lr emit
-	dup >at 1 0 pt_add t_to
-	dup .height @ 1 do
-		dup >at i 0 pt_add t_to 
-		dup >style >vl emit
-		dup .width @ 2 - t_fwd 
-		dup >style >vl emit
+ 	>style >lr emit
+	>at 1 0 pt_add t_to
+	dup .ht 1 do
+		>at i 0 pt_add t_to 
+		>style >vl emit
+		dup .wd 2 - t_fwd 
+		>style >vl emit
 	loop 
-	drop 
+	drop
 ;
 
 
@@ -147,9 +149,9 @@ Box dbl
 
 : draw_all
 	utime
-	dbl dup >draw
-	round dup >draw
-	sng dup >draw
-	bld dup >draw
+	dbl >draw
+	round >draw
+	sng >draw
+	bld >draw
 	utime swap - . ." usecs" cr cr
 ;

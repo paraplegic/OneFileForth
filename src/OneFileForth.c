@@ -1041,7 +1041,7 @@ Str_t str_token( Input_t *input )
 
 		if( tkn > 0 )
 		{
-			return buf ;
+			return (Str_t) buf ;
 		}
 
   } while( 1 ) ;
@@ -2887,7 +2887,7 @@ void infile()
 	InputStack[ in_This ].bytes_read = -1 ; 
 	InputStack[ in_This ].bytes_this = -1 ; 
 	InputStack[ in_This ].name = str_cache( "tty" ) ;
-	InputStack[ in_This ].bytes = inbuf[ in_This ] ; 
+	InputStack[ in_This ].bytes = (Str_t) inbuf[ in_This ] ; 
 	return ;
   }
 
@@ -2897,7 +2897,7 @@ void infile()
 	InputStack[ in_This ].bytes_read = -1 ; 
 	InputStack[ in_This ].bytes_this = -1 ; 
     InputStack[ in_This ].name = str_cache( fn ) ;
-    InputStack[ in_This ].bytes = inbuf[ in_This ] ; 
+    InputStack[ in_This ].bytes = (Str_t) inbuf[ in_This ] ; 
 	if( !isNul( fn ) )
 	{
 		fd = open( fn, O_RDONLY ) ;
