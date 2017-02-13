@@ -316,6 +316,9 @@ void emit();
 void type();
 void cr();
 void dp();
+void stringptr();
+void flashsize();
+void flashptr();
 void here();
 void freespace();
 void comma();
@@ -433,6 +436,7 @@ void utf8_encode();
 void accept();
 void dump();
 void find();
+void version();
 
 /*
   -- dictionary is simply an array of struct ...
@@ -519,6 +523,9 @@ Dict_t Primitives[] = {
   { type,	"type", Normal, NULL },
   { cr,		"cr", Normal, NULL },
   { dp,		"dp", Normal, NULL },
+  { stringptr,	"strings", Normal, NULL },
+  { flashsize,	"flashsize", Normal, NULL },
+  { flashptr,	"flash", Normal, NULL },
   { here,	"here", Normal, NULL },
   { freespace,	"freespace", Normal, NULL },
   { comma,	",", Normal, NULL },
@@ -634,6 +641,7 @@ Dict_t Primitives[] = {
   { utf8_encode, "utf8", Normal, NULL }, // ( ch buf len -- len )
   { accept,	"accept", Normal, NULL }, // ( buf len -- n )
   { find,	"find", Normal, NULL }, // ( ptr -- dp | 0  )
+  { version,	"version", Normal, NULL }, // ( -- Mjr Mnr Rev )
   { NULL, 	NULL, 0, NULL }
 } ;
 
@@ -641,11 +649,12 @@ Dict_t Colon_Defs[sz_ColonDefs] ;
 Cell_t n_ColonDefs = 0 ;
 
 Cell_t flash[sz_FLASH] ;
+Cell_t *flash_mem = StartOf( flash ) ;
 Cell_t *Here = StartOf( flash ) ;
 Cell_t *DictPtr = StartOf( flash ) ;
+Byt_t  *String_Data = (Byt_t *) (&flash[sz_FLASH] - 1) ;
 Cell_t  Base = 10 ;
 Cell_t  Trace = 0 ;
-Byt_t  *String_Data = (Byt_t *) (&flash[sz_FLASH] - 1) ;
 
 typedef enum {
  state_Interactive,
@@ -1812,11 +1821,8 @@ void Eof(){
 #ifdef HOSTED
   if( in_This > 0 )
   {
-    if( in_This > 0 ){
-      close( INPUT ) ;
-	  // put_str( InputStack[ in_This ].name ) ; 
-      in_This-- ;
-    }
+    close( INPUT ) ;
+    in_This-- ;
     if( !isNul( in_Word ) && do_x_Once )
     {
       do_x_Once = 0 ; 
@@ -2278,7 +2284,23 @@ void dp(){
   push( (Cell_t) DictPtr ) ;
 }
 
-void here(){
+void stringptr()
+{
+  push( (Cell_t) String_Data ) ;
+}
+
+void flashsize()
+{
+  push( (Cell_t) sz_FLASH ) ;
+}
+
+void flashptr()
+{
+  push( (Cell_t) flash_mem ) ;
+}
+
+void here()
+{
   push( (Cell_t) Here ) ;
 }
 
@@ -3439,3 +3461,10 @@ void path()
 	push( off_path ) ; 
 }
 #endif
+void version()
+{
+  push( str_literal( MAJOR, Base ) ) ;
+  push( str_literal( MINOR, Base ) ) ;
+  push( str_literal( REVISION, Base ) ) ;
+
+}
