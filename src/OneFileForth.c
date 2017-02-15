@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"42"
+#define REVISION	"43"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -2902,7 +2902,7 @@ void infile()
 
   Str_t fn = (Str_t) pop() ;
 
-  if( in_This < 0 )
+  if( in_This < 0 ) // intialize ...
   {
 	in_This = 0 ;
 	InputStack[ in_This ].file = 0 ; 
@@ -2913,7 +2913,7 @@ void infile()
 	return ;
   }
 
-  if( in_This < sz_FILES )
+  if( in_This < sz_FILES ) // push a new input file ...
   {
     in_This++ ;
 	InputStack[ in_This ].bytes_read = -1 ; 
@@ -2922,10 +2922,10 @@ void infile()
     InputStack[ in_This ].bytes = (Str_t) inbuf[ in_This ] ; 
 	if( !isNul( fn ) )
 	{
-		fd = open( fn, O_RDONLY ) ;
+		fd = open( fn, O_RDONLY ) ; // check file name provided ...
 		if( fd < 0 )
 		{
-			if( !isNul( off_path ) )
+			if( !isNul( off_path ) ) // add the file path and try again ...
 			{
 				str_format( (Str_t) tmp_buffer, sz_INBUF, "%s/%s", (Str_t) off_path, (Str_t) fn ) ;
 				fn = (Str_t) tmp_buffer ;
@@ -2945,32 +2945,6 @@ void infile()
   throw( err_InStack ) ;
   return ;
 
-}
-void infilex(){
-#ifdef HOSTED
-  Cell_t fd ;
-
-  chk( 1 ) ; 
-  Str_t fn = (Str_t) pop() ;
-  if( !isNul( fn ) ){
-    fd = open( fn, O_RDONLY ) ;
-    if( fd < 0 ){
-	  if( !isNul( off_path ) )
-      {
-	    str_format( (Str_t) tmp_buffer, sz_INBUF, "%s/%s", (Str_t) off_path, (Str_t) fn ) ;
-		fn = (Str_t) tmp_buffer ;
-    	fd = open( fn, O_RDONLY ) ;
-        if( fd < 0 )
-		{
-      		throw( err_NoFile ) ;
-			return ;
-		}
-      }
-    }
-    in_files[++in_This] = fd ; 
-  } 
-
-#endif
 }
 
 void filename()
