@@ -1,6 +1,7 @@
 ( 
  Object type programming in Forth 
  Simplistic object using create.does>
+ 1 trace !
 )
 
 : Point create , , does> dup @ swap 1 cells + @ ;
