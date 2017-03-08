@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"43"
+#define REVISION	"45"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -342,6 +342,7 @@ void errstr() ;
 void base() ;
 void trace() ;
 void resetter() ;
+void cold() ;
 void see() ;
 void pushPfa() ;
 void does() ;
@@ -385,6 +386,7 @@ void SCratch();
 void Buf();
 void pad();
 void comment();
+void slashcomment();
 void dotcomment();
 void quote();
 void dotquote();
@@ -437,6 +439,10 @@ void accept();
 void dump();
 void find();
 void version();
+void code();
+void data();
+void align();
+void flash_init();
 
 /*
   -- dictionary is simply an array of struct ...
@@ -547,7 +553,8 @@ Dict_t Primitives[] = {
   { errvar,	"errvar", Normal, NULL },
   { errval,	"errval", Normal, NULL },
   { errstr,	"errstr", Normal, NULL },
-  { resetter,	"reset", Normal, NULL },
+  { resetter,	"warm", Normal, NULL },
+  { cold,	"cold", Normal, NULL },
   { see,	"see", Normal, NULL },
   { pushPfa,	"(variable)", Normal, NULL },
   { allot,	"allot", Normal, NULL },
@@ -591,6 +598,7 @@ Dict_t Primitives[] = {
   { SCratch,	"scratch", Normal, NULL },
   { pad,	"pad", Normal, NULL },
   { comment,	"(", Immediate, NULL },
+  { slashcomment,	"//", Immediate, NULL },
   { dotcomment,	".(", Immediate, NULL },
   { quote,	"\"", Immediate, NULL },
   { dotquote,	".\"", Immediate, NULL },
@@ -642,6 +650,9 @@ Dict_t Primitives[] = {
   { accept,	"accept", Normal, NULL }, // ( buf len -- n )
   { find,	"find", Normal, NULL }, // ( ptr -- dp | 0  )
   { version,	"version", Normal, NULL }, // ( -- Mjr Mnr Rev )
+  { code,	"code", Normal, NULL }, // ( -- adr )
+  { data,	"data", Normal, NULL }, // ( -- adr )
+  { align,	"align", Normal, NULL }, // ( adr -- adr' )
   { NULL, 	NULL, 0, NULL }
 } ;
 
@@ -650,9 +661,11 @@ Cell_t n_ColonDefs = 0 ;
 
 Cell_t flash[sz_FLASH] ;
 Cell_t *flash_mem = StartOf( flash ) ;
-Cell_t *Here = StartOf( flash ) ;
-Cell_t *DictPtr = StartOf( flash ) ;
-Byt_t  *String_Data = (Byt_t *) (&flash[sz_FLASH] - 1) ;
+
+// Some global state variables (see forget();)
+Cell_t *Here ;
+Cell_t *DictPtr ;
+Byt_t  *String_Data ;
 Cell_t  Base = 10 ;
 Cell_t  Trace = 0 ;
 
@@ -719,12 +732,22 @@ Str_t errors[] = {
   NULL,
 } ;
 
+typedef enum  {
+  rst_unexpected = 0,
+  rst_signalhdlr = 1,
+  rst_catch = 2,
+  rst_application = 3,
+  rst_checkstack = 4,
+  rst_coldstart = 5
+} check_pt ;
+
 Str_t resetfrom[] = {
   "unexpected",
   "sig_hdlr",
   "catch",
   "application",
   "checkstack",
+  "cold start",
   NULL
 } ;
 
@@ -775,7 +798,7 @@ void sig_hdlr( int sig ){
   sigval = sig ;
   throw( err_CaughtSignal ) ;
   if( sig == SIGSEGV ){
-    longjmp( env, 1 ) ;
+    longjmp( env, rst_signalhdlr ) ;
   }
   return ;
 }
@@ -913,7 +936,7 @@ void uart_init(void)
 }
 
 int notmain( void ){
-uart_init();
+  uart_init();
 
 #else // NATIVE vs HOSTED ... 
 
@@ -922,7 +945,9 @@ int main( int argc, char **argv ){
 #endif
 
 #ifdef HOSTED
-  
+  forget() ; // puts the system in a known state ...
+
+  flash_init() ;
   str_copy( (Str_t) Locale, setlocale( LC_ALL, "" ), sz_STACK ) ;
   off_path = getenv( OFF_PATH ) ;
   push( 0 ) ;
@@ -1018,9 +1043,10 @@ Wrd_t ch_index( Str_t str, Byt_t c ){
 
 Str_t str_token( Input_t *input )
 {
-  static Byt_t buf[sz_INBUF] ;
+  static Byt_t acc[sz_INBUF] ;
   int tkn = 0 ;
-  buf[0] = (Byt_t) 0 ; // cheaper than zeroing entire buffer ...
+  acc[0] = (Byt_t) 0 ; // cheaper than zeroing entire token accumulator ...
+
   do {
 		if( input->bytes_read < 1 )
 		{
@@ -1043,14 +1069,14 @@ Str_t str_token( Input_t *input )
 
 		if( !ch_matches( input->bytes[input->bytes_this++], WHITE_SPACE ) )
 		{
-			buf[tkn++] = input->bytes[input->bytes_this-1] ;
-			buf[tkn] = (Byt_t) 0 ; 
+			acc[tkn++] = input->bytes[input->bytes_this-1] ;
+			acc[tkn] = (Byt_t) 0 ; 
 			continue ; 
 		}
 
 		if( tkn > 0 )
 		{
-			return (Str_t) buf ;
+			return (Str_t) acc ;
 		}
 
   } while( 1 ) ;
@@ -1317,6 +1343,13 @@ Dict_t *lookup( Str_t tkn ){
   if( isNul( tkn ) )
      return (Dict_t *) NULL ;
 
+  for( i = n_ColonDefs - 1 ; i > -1 ; i-- ){
+    p = &Colon_Defs[ i ] ;
+    if( isMatch( tkn, p ->nfa ) ){
+      return p ;
+    }
+  }
+
   p = StartOf( Primitives ) ;
   while( p ->nfa ){
    if( isMatch( tkn, p ->nfa ) ){
@@ -1325,12 +1358,6 @@ Dict_t *lookup( Str_t tkn ){
    p++ ;
   }
 
-  for( i = n_ColonDefs - 1 ; i > -1 ; i-- ){
-    p = &Colon_Defs[ i ] ;
-    if( isMatch( tkn, p ->nfa ) ){
-      return p ;
-    }
-  }
   return (Dict_t *) NULL ;
 }
 
@@ -1352,6 +1379,10 @@ void quit(){
     catch();
     n = fmt( "-- Reset by %s.\n", resetfrom[beenhere] ) ;
     outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
+    if( beenhere == rst_coldstart )
+    {
+		banner() ;
+    }
   }
 #endif
   for(;;){
@@ -1517,7 +1548,7 @@ Wrd_t checkstack( Wrd_t n, Str_t fun ){
       outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), x ) ;
       throw( err_StackUdr ) ;
 #ifdef HOSTED
-      longjmp( env, 4 ) ;
+      longjmp( env, rst_checkstack ) ;
 #endif
     }
     return 1 ;
@@ -1927,7 +1958,7 @@ void catch(){
   sz = fmt( "-- Attempting Reset.\n" ) ;
   outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
 #ifdef HOSTED
-  longjmp( env, 2 );
+  longjmp( env, rst_catch );
 #endif
 
 }
@@ -2104,6 +2135,12 @@ void dotquote(){
 void comment(){
   push( (Cell_t) str_delimited( ")" ) ) ;
   drop();
+}
+
+void slashcomment()
+{
+  Input_t *input = &InputStack[ in_This ] ; 
+  while( !ch_matches( input->bytes[input->bytes_this++], "\n" ) ) ;
 }
 
 void dotcomment(){
@@ -2650,8 +2687,15 @@ void base(){
 void resetter(){
   q_reset() ;
 #ifdef HOSTED
-  longjmp( env, 3 ) ;
+  longjmp( env, rst_application ) ;
 #endif
+}
+
+void cold()
+{
+  q_reset() ;
+  forget() ;
+  longjmp( env, rst_coldstart ) ;
 }
 
 void see(){
@@ -3299,6 +3343,8 @@ void forget()
   DictPtr = (Cell_t *) StartOf( flash ) ;		// set the dictptr to here ...
   String_Data = (Byt_t *) (&flash[sz_FLASH] - 1) ;	// erase the string data referenced in the dictionary
   n_ColonDefs = 0 ; 					// uncount the colon defs ... 
+  Base = 10 ;
+  Trace = 0 ;
 }
 
 int sign_is_negative = 0 ; 
@@ -3319,15 +3365,17 @@ void fmt_start() 	// ( n -- <ptr> n )
 void fmt_digit()	// ( <ptr> n -- <ptr-1> n2 ) : # dup base @ % . base @ / ;
 {
   register Cell_t n, digit ;
+  Str_t digits = "0123456789abcdefghijklmnopqrstuvwxyz" ;
 
   if( *tos )
   {
     fmt_sign() ;
     n = pop() ;
     digit = ( (Abs( n ) % Base) + '0' ) & 0xff ;
+    digit = ( (Abs( n ) % Base) ) ;
     n /= Base ;
     dupe() ;
-    push( digit ) ;
+    push( digits[digit] ) ;
     swap() ;
     byt_store() ;
     (*tos) -= 1 ;
@@ -3435,10 +3483,41 @@ void path()
 	push( off_path ) ; 
 }
 #endif
+
 void version()
 {
   push( str_literal( MAJOR, Base ) ) ;
   push( str_literal( MINOR, Base ) ) ;
   push( str_literal( REVISION, Base ) ) ;
 
+}
+
+void data()
+{
+  push( (Cell_t *) Colon_Defs );
+}
+
+void code()
+{
+  push( (Cell_t *) Primitives );
+}
+
+void align() // ( adr -- adr' )
+{
+	Cell_t adr = *tos ;
+
+	while( adr % sizeof( Cell_t ) )
+	{
+      adr++;
+	}
+	*tos = adr ;
+}
+
+void flash_init() // ( -- ) 
+{
+  Cell_t i ;
+  for( i = 0 ; i < sz_FLASH ; i++ )
+  {
+    flash[i] = 0xdeadbeef ;
+  }
 }
