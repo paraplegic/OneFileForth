@@ -3436,7 +3436,7 @@ void fmt_end() // ( <ptr> n -- <ptr+1> )
   plusplus() ;
 }
 
-void utf8_encode()
+void utf8_encode() // ( char buf len -- len )
 {
   Cell_t ch, len ;
   Str_t  buf ;
@@ -3449,7 +3449,7 @@ void utf8_encode()
   push( (Wrd_t) utf8_encoder( ch, buf, len ) ) ;
 }
 
-void accept()
+void accept() // ( buf len -- len )
 {
   Cell_t len ;
   Str_t  buf ;
