@@ -123,8 +123,6 @@ struct termios tty_normal_state ;
 #endif
 #define FLAVOUR 		"Hosted"
 #define sz_FILES		4			/* nfiles */
-int  					in_This = -1, in_files[ sz_FILES ] = { 0 } ;
-int  					out_This = 0, out_files[ sz_FILES ] = { 1 } ;
 #define INPUT			InputStack[ in_This ].file
 #define OUTPUT			out_files[ out_This ]
 jmp_buf env ;
@@ -139,6 +137,9 @@ jmp_buf env ;
 #define NULL			0
 #endif
 #endif
+
+int  					in_This = -1, in_files[ sz_FILES ] = { 0 } ;
+int  					out_This = 0, out_files[ sz_FILES ] = { 1 } ;
 
 #if _WORDSIZE == 2
 typedef int16_t		Wrd_t ;
@@ -944,19 +945,16 @@ int main( int argc, char **argv ){
 
 #endif
 
-#ifdef HOSTED
   forget() ; // puts the system in a known state ...
+  q_reset() ;
+  push( 0 ) ; 
+  infile() ;
 
+#ifdef HOSTED
   flash_init() ;
   str_copy( (Str_t) Locale, setlocale( LC_ALL, "" ), sz_STACK ) ;
   off_path = getenv( OFF_PATH ) ;
-  push( 0 ) ;
-  infile() ;
-  q_reset() ;
   chk_args( argc, argv ) ;
-  if( !quiet ) 
-      banner() ;
-
   if( !isNul( in_File ) )
   {
      push( (Str_t) in_File );
@@ -968,9 +966,9 @@ int main( int argc, char **argv ){
   }
 #else
   str_copy( (Str_t) Locale, "EMBEDDED", 9 ) ;
-  q_reset() ;
-  banner() ;
 #endif
+
+  banner() ;
   quit() ;
   return 0 ;
 }
@@ -1043,9 +1041,9 @@ Wrd_t ch_index( Str_t str, Byt_t c ){
 
 Str_t str_token( Input_t *input )
 {
-  static Byt_t acc[sz_INBUF] ;
   int tkn = 0 ;
-  acc[0] = (Byt_t) 0 ; // cheaper than zeroing entire token accumulator ...
+  static Byt_t acc[sz_INBUF] ;
+  str_set( (Str_t) acc, 0, sz_INBUF ) ;
 
   do {
 		if( input->bytes_read < 1 )
@@ -1340,13 +1338,17 @@ Str_t str_cache( Str_t tag ){
 Dict_t *lookup( Str_t tkn ){
   Dict_t *p ;
   Cell_t  i ;
+
   if( isNul( tkn ) )
      return (Dict_t *) NULL ;
 
-  for( i = n_ColonDefs - 1 ; i > -1 ; i-- ){
-    p = &Colon_Defs[ i ] ;
-    if( isMatch( tkn, p ->nfa ) ){
-      return p ;
+  if( n_ColonDefs > 0 )
+  {
+    for( i = n_ColonDefs - 1 ; i > -1 ; i-- ){
+      p = &Colon_Defs[ i ] ;
+      if( isMatch( tkn, p ->nfa ) ){
+        return p ;
+      }
     }
   }
 
@@ -1401,6 +1403,10 @@ void quit(){
 
 void banner(){
   Wrd_t n ;
+
+#ifdef HOSTED
+  if( quiet ) return ;
+#endif
 
   n = fmt( "-- OneFileForth-%s alpha Version: %s.%s.%s%c (%s)\n", FLAVOUR, MAJOR, MINOR, REVISION, dbg, Locale ) ;
   outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
@@ -1525,10 +1531,13 @@ void words(){
   Dict_t *p ;
   Cell_t i ;
  
-  p = StartOf( Colon_Defs ) ;
-  for( i = n_ColonDefs - 1 ; i > -1 ; i-- ){
-    p = &Colon_Defs[i] ;
-    put_str( p ->nfa ) ;
+  if( n_ColonDefs > 0 )
+  {
+    p = StartOf( Colon_Defs ) ;
+    for( i = n_ColonDefs - 1 ; i > -1 ; i-- ){
+      p = &Colon_Defs[i] ;
+      put_str( p ->nfa ) ;
+    }
   }
 
   p = StartOf( Primitives ) ;
@@ -2140,7 +2149,7 @@ void comment(){
 void slashcomment()
 {
   Input_t *input = &InputStack[ in_This ] ; 
-  while( !ch_matches( input->bytes[input->bytes_this++], "\n" ) ) ;
+  while( !ch_matches( input->bytes[input->bytes_this++], "\n\r" ) ) ;
 }
 
 void dotcomment(){
@@ -2688,6 +2697,8 @@ void resetter(){
   q_reset() ;
 #ifdef HOSTED
   longjmp( env, rst_application ) ;
+#else
+  put_str( "Warm start." ) ; cr();
 #endif
 }
 
@@ -2695,7 +2706,11 @@ void cold()
 {
   q_reset() ;
   forget() ;
+#ifdef HOSTED
   longjmp( env, rst_coldstart ) ;
+#else
+  banner();
+#endif
 }
 
 void see(){
@@ -2941,10 +2956,7 @@ void closetty(){
 
 void infile()
 {
-  Wrd_t fd ;
   chk( 1 ) ;
-
-  Str_t fn = (Str_t) pop() ;
 
   if( in_This < 0 ) // intialize ...
   {
@@ -2956,6 +2968,10 @@ void infile()
 	InputStack[ in_This ].bytes = (Str_t) inbuf[ in_This ] ; 
 	return ;
   }
+
+#ifdef HOSTED
+  Wrd_t fd ;
+  Str_t fn = (Str_t) pop() ;
 
   if( in_This < sz_FILES ) // push a new input file ...
   {
@@ -2988,7 +3004,7 @@ void infile()
 
   throw( err_InStack ) ;
   return ;
-
+#endif
 }
 
 void filename()
@@ -3060,7 +3076,7 @@ Wrd_t outp( Wrd_t fd, Str_t buf, Wrd_t len ){
 Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
 #ifdef HOSTED
   return read( fd, buf, len ) ;
-#else
+#endif
 #ifdef NATIVE
   Cell_t c, x, i = 0 ;
   
@@ -3068,7 +3084,7 @@ Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
   while( i < len )
   {
     buf[i++] = c = uart_getc();
-    if( c == 0x15 )
+    if( c == 0x15 ) // NAK
     {
        str_set( buf, 0, len ) ;
        int slen = str_length( buf ) ;
@@ -3079,23 +3095,22 @@ Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
        i = 0 ;
        continue ;
     }
-    if( c == 0x08 )
+    if( c == 0x08 || c == 0x7f ) // backspace || delete
     {
-       buf[--i] = 0x00 ;
+       buf[--i] = 0x00 ; // backspace
+       buf[--i] = 0x00 ; // bad char
        i = i < 0 ? 0 : i ;
-       buf[i] = 0x00 ;
-       uart_putc( 0x20 ) ;
-       uart_putc( 0x08 ) ;
+       uart_putc( 0x20 ) ; // space
+       uart_putc( 0x08 ) ; // backspace
        continue ;
     }
-    if( c == 0x0d )
+    if( c == 0x0d ) // return 
     {
-       uart_putc( 0x0a ) ;
+       uart_putc( 0x0a ) ; // newline
        break ;
     }
   }
   return i ;
-#endif
 #endif
 }
 
