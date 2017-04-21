@@ -183,9 +183,7 @@ typedef void *		Opq_t ;
 typedef Wrd_t		Cell_t ;
 typedef uWrd_t		uCell_t ;
 
-/*
-  -- useful macros ...
-*/
+//  -- useful macros ...
 #define v_Off		0
 #define v_On		1
 #define push( x )	++tos; *(tos) = (Cell_t) x
@@ -214,36 +212,27 @@ typedef uWrd_t		uCell_t ;
 #define dbg		'D'
 #endif
 
-/*
-  -- a stack ...
-*/
+//  -- a stack ...
 Cell_t stack[sz_STACK] ;
-Cell_t *tos = StartOf( stack ) ;
+Cell_t *tos = (Cell_t *) StartOf( stack ) ;
 
-/*
-  -- and a return stack ...
-*/
+//  -- and a return stack ...
 Cell_t rstack[sz_STACK] ;
-Cell_t *rtos = StartOf( rstack ) ;
+Cell_t *rtos = (Cell_t *) StartOf( rstack ) ;
 
-/*
-  -- and a user stack ...
-*/
+//  -- and a user stack ...
 Cell_t ustack[sz_STACK] ;
-Cell_t *utos = StartOf( ustack ) ;
+Cell_t *utos = (Cell_t *) StartOf( ustack ) ;
 
-/*
-  -- an input and scratch buffers ...
-*/
+//  -- some input and scratch buffers ...
 Byt_t  garbage[sz_INBUF] ;
-
 Byt_t  input_buffer[ sz_FILES * sz_INBUF ] ;
 Byt_t *inbuf[] = {
-	(Byt_t *) (input_buffer + 0 * sz_INBUF),
+	(Byt_t *) (input_buffer + (0 * sz_INBUF)),
 #ifdef HOSTED
-	(Byt_t *) (input_buffer + 1 * sz_INBUF),
-	(Byt_t *) (input_buffer + 2 * sz_INBUF),
-	(Byt_t *) (input_buffer + 3 * sz_INBUF),
+	(Byt_t *) (input_buffer + (1 * sz_INBUF)),
+	(Byt_t *) (input_buffer + (2 * sz_INBUF)),
+	(Byt_t *) (input_buffer + (3 * sz_INBUF)),
 #endif // HOSTED
 	NULL
 } ;
@@ -464,11 +453,11 @@ typedef struct _inbuf_ {
 } Input_t ;
 
 Input_t InputStack[sz_FILES] = {
-	{ .file=-1, .bytes_read=-1, .bytes_this=-1, .name=(Str_t) NULL, .bytes= (Str_t) &inbuf[0] },
+	{ .file = -1, .bytes_read = -1, .bytes_this = -1, .name = (Str_t) NULL, .bytes = (Str_t) &inbuf[0] },
 #ifdef HOSTED
-	{ .file=-1, .bytes_read=-1, .bytes_this=-1, .name=(Str_t) NULL, .bytes= (Str_t) &inbuf[1] },
-	{ .file=-1, .bytes_read=-1, .bytes_this=-1, .name=(Str_t) NULL, .bytes= (Str_t) &inbuf[2] },
-	{ .file=-1, .bytes_read=-1, .bytes_this=-1, .name=(Str_t) NULL, .bytes= (Str_t) &inbuf[3] },
+	{ .file = -1, .bytes_read = -1, .bytes_this = -1, .name = (Str_t) NULL, .bytes = (Str_t) &inbuf[1] },
+	{ .file = -1, .bytes_read = -1, .bytes_this = -1, .name = (Str_t) NULL, .bytes = (Str_t) &inbuf[2] },
+	{ .file = -1, .bytes_read = -1, .bytes_this = -1, .name = (Str_t) NULL, .bytes = (Str_t) &inbuf[3] },
 #endif // HOSTED
 } ;
 
@@ -798,8 +787,8 @@ Wrd_t io_cbreak( int fd );
 void sig_hdlr( int sig ){
   sigval = sig ;
   throw( err_CaughtSignal ) ;
-  if( sig == SIGSEGV ){
-    longjmp( env, rst_signalhdlr ) ;
+  if( sigval == SIGSEGV ){
+    catch();
   }
   return ;
 }
@@ -867,12 +856,14 @@ void q_reset(){
   signal( SIGSEGV, sig_hdlr ) ;
 #endif
 #endif
-  promptVal = 0 ; 
+
   decimal() ;
-  tos = StartOf( stack ) ; 
-  rtos = StartOf( rstack ) ;
+  promptVal = 0 ; 
+  tos = (Cell_t *) StartOf( stack ) ;
+  rtos = (Cell_t *) StartOf( rstack ) ;
   error_code = err_OK ;
   state = state_Interactive ;
+
 }
 
 /*
@@ -1495,12 +1486,14 @@ void absolute() // -n -- n
 
 void dotS(){
   Cell_t *ptr ;
+  Cell_t i, num ;
 
   chk( 0 ) ; 
-  depth() ; dot() ;
+  depth() ; num = *tos ; dot() ;
   push( (Cell_t) " : " ) ; type() ;
-  for( ptr = StartOf( stack )+1 ; tos >= ptr ; ptr++ ){
-    push( *ptr ) ; dot() ;
+  for( i = 1; i <= num ; i++ )
+  {
+     push( stack[i+1] ) ; dot() ;
   }
 }
 
@@ -1759,9 +1752,13 @@ void branch(){
 }
 
 void depth(){
-  Wrd_t d ; 
+  Cell_t d ;
 
-  d = tos - StartOf( stack ) ;
+  if( tos == StartOf( stack ) )
+    d = 0 ; 
+  else
+    d = tos - StartOf( stack ) - 1 ;
+
   push( d ) ; 
 }
 
@@ -1862,6 +1859,7 @@ void Eof(){
   if( in_This > 0 )
   {
     close( INPUT ) ;
+    INPUT = -1 ;
     in_This-- ;
     if( !isNul( in_Word ) && do_x_Once )
     {
@@ -1906,10 +1904,11 @@ void catch(){
       sz = fmt( "%s (%d)\n", errors[error_code], error_code ) ;
       outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
       if( sigval == SIGSEGV ){
-        sz = fmt( "-- SIGSEGV (%d) is non recoverable.\n", sigval ) ;
+        sz = fmt( "-- SIGSEGV (%d) is generally non recoverable.\n", sigval ) ;
         outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
-        goto die;
+        goto reset;
       }
+
       Fptr_t ok = signal( sigval, sig_hdlr ) ;
       sz = fmt( "-- Signal %d handled. (%x)\n", sigval, ok ) ;
       outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
@@ -1923,7 +1922,7 @@ void catch(){
       sz = fmt( "-- Thrown by %s.\n", error_loc ) ;
       outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
       goto reset;
-      break ;
+
 #endif
 
     case err_NoInput:
@@ -1942,6 +1941,7 @@ void catch(){
       if( error_code == err_NoInput ){
         goto die ;
       }
+      goto reset;
   }
 
   dump() ;
@@ -2206,7 +2206,6 @@ void unssave(){
     return ;
   }
   throw( err_Unsave ) ;
-
 }
 
 void SCratch(){
@@ -2695,10 +2694,9 @@ void base(){
 
 void resetter(){
   q_reset() ;
+  put_str( " -- Warm start.\n" ) ;
 #ifdef HOSTED
   longjmp( env, rst_application ) ;
-#else
-  put_str( "Warm start." ) ; cr();
 #endif
 }
 
@@ -2995,7 +2993,12 @@ void infile()
 					throw( err_NoFile ) ;
 					return ;
 				}
-			}
+			} else {
+              in_This-- ;
+			  throw( err_NoFile ) ;
+			  return ;
+            }
+           
 		}
 	}
 	InputStack[ in_This ].file = fd ;
@@ -3354,10 +3357,10 @@ void do_ploop(){
 
 void forget()
 {
-  Here = (Cell_t *) StartOf( flash ) ;			// erase colon defs vars and constants ...
-  DictPtr = (Cell_t *) StartOf( flash ) ;		// set the dictptr to here ...
+  Here = (Cell_t *) StartOf( flash ) ;				// erase colon defs vars and constants ...
+  DictPtr = (Cell_t *) StartOf( flash ) ;			// set the dictptr to here ...
   String_Data = (Byt_t *) (&flash[sz_FLASH] - 1) ;	// erase the string data referenced in the dictionary
-  n_ColonDefs = 0 ; 					// uncount the colon defs ... 
+  n_ColonDefs = 0 ; 								// uncount the colon defs ... 
   Base = 10 ;
   Trace = 0 ;
 }
