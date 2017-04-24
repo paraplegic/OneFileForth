@@ -183,34 +183,7 @@ typedef void *		Opq_t ;
 typedef Wrd_t		Cell_t ;
 typedef uWrd_t		uCell_t ;
 
-//  -- useful macros ...
-#define v_Off		0
-#define v_On		1
-#define push( x )	*(++tos) = (Cell_t) x
-#define pop()		*(tos--)
-#define nos			 tos[-1]
-#define rpush( x )	*(++rtos) = x
-#define rpop()		*(rtos--)
-#define upush( x )	*(++utos) = x
-#define upop()		*(utos--)
-#define rnos		(rtos-1)
 #define StartOf(x)	(&x[0])
-#define isNul( x )	(x == NULL)
-#define WHITE_SPACE	" \t\r\n"
-#define inEOF		"<eof>"
-#define MaxStr( x, y )	((str_length( x ) > str_length( y )) ? str_length( x ) : str_length( y ))
-#define isMatch( x, y )	(str_match( (char *) x, (char *) y, MaxStr( (char *) x, (char *) y )))
-#define fmt( x, ... ) 	str_format( (Str_t) StartOf( tmp_buffer ), (Wrd_t) sz_INBUF, x, ## __VA_ARGS__ )
-#define __THIS__        ( (Str_t) __FUNCTION__ )
-#define throw( x )	err_throw( str_error( (char *) err_buffer, sz_INBUF, __THIS__, __LINE__), x )
-#define Abs( x )	((x < 0) ? (x*-1) : x) 
-#ifdef NOCHECK
-#define chk( x )	{}
-#define dbg		'F'
-#else
-#define chk( x )	do { if( !checkstack( x, (Str_t) __func__ ) ) return ; } while(0)
-#define dbg		'D'
-#endif
 
 //  -- a stack ...
 Cell_t stack[sz_STACK+1] ;
@@ -249,6 +222,37 @@ Byt_t	Locale[sz_STACK];
 #ifdef HOSTED
 Str_t	off_path = (Str_t) NULL ;
 #endif
+
+//  -- useful macros ...
+#define v_Off		0
+#define v_On		1
+#define push( x )	*(++tos) = (Cell_t) x
+#define pop()		*(tos--)
+#define nos			 tos[-1]
+#define rpush( x )	*(++rtos) = x
+#define rpop()		*(rtos--)
+#define upush( x )	*(++utos) = x
+#define upop()		*(utos--)
+#define rnos		(rtos-1)
+#define isNul( x )	(x == NULL)
+#define WHITE_SPACE	" \t\r\n"
+#define inEOF		"<eof>"
+#define MaxStr( x, y )	((str_length( x ) > str_length( y )) ? str_length( x ) : str_length( y ))
+#define isMatch( x, y )	(str_match( (char *) x, (char *) y, MaxStr( (char *) x, (char *) y )))
+#define fmt( x, ... ) 	str_format( (Str_t) StartOf( tmp_buffer ), (Wrd_t) sz_INBUF, x, ## __VA_ARGS__ )
+#define __THIS__        ( (Str_t) __FUNCTION__ )
+#define throw( x )	err_throw( str_error( (char *) err_buffer, sz_INBUF, __THIS__, __LINE__), x )
+#define Abs( x )	((x < 0) ? (x*-1) : x) 
+#define UNUSED( x )	Cell_t x __attribute__((unused))
+
+#ifdef NOCHECK
+#define chk( x )	{}
+#define dbg		'F'
+#else
+#define chk( x )	do { if( !checkstack( x, (Str_t) __func__ ) ) return ; } while(0)
+#define dbg		'D'
+#endif
+
 
 /*
   -- forth primitives must be pre-declared ...
@@ -1487,7 +1491,6 @@ void absolute() // -n -- n
 }
 
 void dotS(){
-  Cell_t *ptr ;
   Cell_t i, num ;
 
   chk( 0 ) ; 
@@ -1841,12 +1844,14 @@ void swap(){
 }
 
 void pick(){
-  Wrd_t ix, dpth ;
+  Wrd_t ix ; 
+  Cell_t tval ;
   chk( 1 ) ;
   ix = pop() ;
-  depth(); dpth = pop() ;
-  if( ix <= dpth ){
-    push( *(tos-ix) );
+  depth(); tval = pop() ;
+  if( ix < tval ){
+    tval = *(tos-ix) ;
+    push( tval ) ;
     return ;
   }
   throw( err_StackUdr ) ;
@@ -1961,6 +1966,7 @@ void catch(){
 #endif
 
  reset:
+  dump() ;
   q_reset() ;
   sz = fmt( "-- Attempting Reset.\n" ) ;
   outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
@@ -2952,13 +2958,12 @@ void closetty(){
 
 void infile()
 {
-  Str_t fn ; 
-
+  UNUSED( dummy );
   chk( 1 ) ;
 
-  fn = (Str_t) pop() ;
   if( in_This < 0 ) // intialize ...
   {
+    dummy = pop() ;
 	in_This = 0 ;
 	InputStack[ in_This ].file = 0 ; 
 	InputStack[ in_This ].bytes_read = -1 ; 
@@ -2970,6 +2975,7 @@ void infile()
 
 #ifdef HOSTED
   Wrd_t fd ;
+  Str_t fn = (Str_t) pop() ;
 
   if( in_This < sz_FILES ) // push a new input file ...
   {
