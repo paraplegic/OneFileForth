@@ -30,7 +30,7 @@
 : times ( xt n --  :: execute token n times the hard way )
    0 begin
       over over - while
-            3 pick execute ++
+            2 pick execute ++
       repeat
    drop drop drop
 ;
