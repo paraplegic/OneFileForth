@@ -24,6 +24,7 @@ qemu_versatile_start.o	: qemu_versatile_start.s
 
 OneFileForth.o : $(SRC)/OneFileForth.c
 	$(ARMGNU)-gcc -c $(COPS) -D NOCHECK $(SRC)/OneFileForth.c -o OneFileForth.o
+	## $(ARMGNU)-gcc -c $(COPS) $(SRC)/OneFileForth.c -o OneFileForth.o
 
 qemu:	$(OUT)/OneFileForth-$(OS)-$(ARCH).bin
 	qemu-system-arm -M versatilepb -m 1024M -nographic -kernel $(OUT)/OneFileForth-$(OS)-$(ARCH).bin 
