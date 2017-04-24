@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"46"
+#define REVISION	"47"
 
 #include <stdarg.h>
 #include <stdint.h>
