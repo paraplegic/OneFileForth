@@ -186,10 +186,10 @@ typedef uWrd_t		uCell_t ;
 //  -- useful macros ...
 #define v_Off		0
 #define v_On		1
-#define push( x )	++tos; *(tos) = (Cell_t) x
+#define push( x )	*(++tos) = (Cell_t) x
 #define pop()		*(tos--)
 #define nos			 tos[-1]
-#define rpush( x )	++rtos; *(rtos) = x
+#define rpush( x )	*(++rtos) = x
 #define rpop()		*(rtos--)
 #define upush( x )	*(++utos) = x
 #define upop()		*(utos--)
@@ -213,15 +213,15 @@ typedef uWrd_t		uCell_t ;
 #endif
 
 //  -- a stack ...
-Cell_t stack[sz_STACK] ;
+Cell_t stack[sz_STACK+1] ;
 Cell_t *tos = (Cell_t *) StartOf( stack ) ;
 
 //  -- and a return stack ...
-Cell_t rstack[sz_STACK] ;
+Cell_t rstack[sz_STACK+1] ;
 Cell_t *rtos = (Cell_t *) StartOf( rstack ) ;
 
 //  -- and a user stack ...
-Cell_t ustack[sz_STACK] ;
+Cell_t ustack[sz_STACK+1] ;
 Cell_t *utos = (Cell_t *) StartOf( ustack ) ;
 
 //  -- some input and scratch buffers ...
@@ -859,8 +859,10 @@ void q_reset(){
 
   decimal() ;
   promptVal = 0 ; 
-  tos = (Cell_t *) StartOf( stack ) ;
+  tos = (Cell_t *) StartOf( stack ) ; 
+  *tos = 0xdeadbeef ;
   rtos = (Cell_t *) StartOf( rstack ) ;
+  *rtos = 0xdeadbeef ;
   error_code = err_OK ;
   state = state_Interactive ;
 
@@ -1490,10 +1492,10 @@ void dotS(){
 
   chk( 0 ) ; 
   depth() ; num = *tos ; dot() ;
-  push( (Cell_t) " : " ) ; type() ;
+  put_str( " : " ) ;
   for( i = 1; i <= num ; i++ )
   {
-     push( stack[i+1] ) ; dot() ;
+     push( stack[i] ) ; dot() ;
   }
 }
 
@@ -1754,11 +1756,7 @@ void branch(){
 void depth(){
   Cell_t d ;
 
-  if( tos == StartOf( stack ) )
-    d = 0 ; 
-  else
-    d = tos - StartOf( stack ) - 1 ;
-
+  d = tos - StartOf( stack ) ;
   push( d ) ; 
 }
 
@@ -2954,8 +2952,11 @@ void closetty(){
 
 void infile()
 {
+  Str_t fn ; 
+
   chk( 1 ) ;
 
+  fn = (Str_t) pop() ;
   if( in_This < 0 ) // intialize ...
   {
 	in_This = 0 ;
@@ -2969,7 +2970,6 @@ void infile()
 
 #ifdef HOSTED
   Wrd_t fd ;
-  Str_t fn = (Str_t) pop() ;
 
   if( in_This < sz_FILES ) // push a new input file ...
   {

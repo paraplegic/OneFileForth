@@ -42,6 +42,7 @@ clean:
 	rm -rf *.elf
 	rm -rf *.bin
 	rm -rf *.list
+	rm -rf cscope.out
 
 realclean:	clean
 	rm -rf $(OUT)/*
