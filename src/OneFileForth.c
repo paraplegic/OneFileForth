@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"47"
+#define REVISION	"48"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -689,8 +689,8 @@ typedef enum {
   err_NullPtr,
   err_NoSpace,
   err_BadState,
-  err_CaughtSignal,
   err_UnResolved,
+  err_CaughtSignal,
   err_Unsave,
   err_NoWord,
   err_TknSize,
@@ -713,8 +713,8 @@ Str_t errors[] = {
   "-- NULL pointer.",
   "-- Dictionary space exhausted.",
   "-- Bad state.",
-  "-- Caught a signal.",
   "-- Unresolved branch.",
+  "-- Caught a signal.",
   "-- Too late to un-save.",
   "-- No such word exists.",
   "-- Tkn too large.",
@@ -732,7 +732,8 @@ typedef enum  {
   rst_catch = 2,
   rst_application = 3,
   rst_checkstack = 4,
-  rst_coldstart = 5
+  rst_coldstart = 5,
+  rst_user = 6
 } check_pt ;
 
 Str_t resetfrom[] = {
@@ -742,6 +743,7 @@ Str_t resetfrom[] = {
   "application",
   "checkstack",
   "cold start",
+  "user",
   NULL
 } ;
 
@@ -791,9 +793,10 @@ Wrd_t io_cbreak( int fd );
 void sig_hdlr( int sig ){
   sigval = sig ;
   throw( err_CaughtSignal ) ;
-  if( sigval == SIGSEGV ){
-    catch();
-  }
+//  if( sigval == SIGSEGV ){
+//    catch();
+//  }
+  catch() ;
   return ;
 }
 
@@ -1625,7 +1628,8 @@ void  Repeat() {
 }
 
 void  Leave(){
-  *rtos = 0 ; 
+  if( rtos > rstack )
+    *rtos = 0 ; 
 }
 
 void  Until(){
@@ -1741,18 +1745,18 @@ void not(){
 void q_branch(){
   Cell_t *ptr ;
 
-  ptr = (Cell_t *) rpop() ;
-  if( pop() ){
+  ptr = (Cell_t *) rpop() ;		// grab next word pointer
+  if( pop() ){					// if .T. skip current pointer for next (?branch)
     rpush( (Cell_t) ++ptr ) ;
     return ;
   }
-  rpush( *ptr ) ;
+  rpush( *ptr ) ;				// else branch to ptr ... 
 }
 
 void branch(){
   Cell_t *x ;
 
-  x = (Cell_t *) rpop() ;
+  x = (Cell_t *) rpop() ;		// always branch to next ... 
   rpush( *x ) ;
 }
 
@@ -1915,6 +1919,12 @@ void catch(){
       Fptr_t ok = signal( sigval, sig_hdlr ) ;
       sz = fmt( "-- Signal %d handled. (%x)\n", sigval, ok ) ;
       outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+      if( sigval == SIGINT )
+      {
+        put_str( "-- warm start suggested." ) ; cr() ;
+        Leave();
+      }
+      return ;
       goto reset;
 
     case err_SysCall:
@@ -2697,10 +2707,10 @@ void base(){
 }
 
 void resetter(){
+  put_str( "-- Warm start." ) ; cr();
   q_reset() ;
-  put_str( " -- Warm start.\n" ) ;
 #ifdef HOSTED
-  longjmp( env, rst_application ) ;
+  longjmp( env, rst_user ) ;
 #endif
 }
 
@@ -3291,15 +3301,13 @@ void do_loop()
   if ( *(rtos)+1 < *(rnos) ){	// if i < n
     *rtos += 1; 		// ++i
     rpush( nxt ) ; 		// restore nxt
-    push( 0 ) ;			// flag for branch
+    push( 0 ) ;			// flag for ?branch
     return ;
   }
 
-  // rpop();			// drop i
-  // rpop();			// drop n
-  rtos-- ; rtos-- ;
+  rtos-- ; rtos-- ;		// drop i, n
   rpush( nxt ) ;		// restore nxt
-  push( 1 ) ;			// flag for branch
+  push( 1 ) ;			// flag for ?branch
 
 }
 
@@ -3353,11 +3361,9 @@ void do_ploop(){
 
   }
 
-  // rpop();
-  // rpop();
-  rtos-- ; rtos-- ;
-  rpush( nxt ) ;
-  push( 1 ) ;
+  rtos-- ; rtos-- ;		// drop i, n ...
+  rpush( nxt ) ;		// restore nxt ...
+  push( 1 ) ;			// flag for ?branch ...
 
 }
 
