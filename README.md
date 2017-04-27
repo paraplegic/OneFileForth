@@ -13,9 +13,9 @@
 	on Linux and/or BSD:
 
 		make test
-		./mff
+		./off
 
-		-- MiniForth-Hosted alpha Version: 00.01.31F
+		-- MiniForth-Hosted alpha Version: 00.01.48F
 		-- www.ControlQ.com
 		ok 
 
@@ -28,7 +28,7 @@
 	similar).  Assuming you have an appropriate X compilation tool, and QEMU, you can test the native
 	version by typing:
 
-		make -f QEMU.mk qemu
+		make qemu
 
 		qemu-system-arm -M versatilepb -m 1024M -nographic -kernel MiniForth.bin 
 		pulseaudio: set_sink_input_volume() failed
@@ -57,9 +57,12 @@
 ### Tested
 
 ####	Hosted:
-	FreeBSD 10.2
-	Debian  Jesse
-	OSX  ??
+	  FreeBSD 10.2
+	  Debian  Jesse
+	  RaspberyPi Zero W running Raspbian Jesse
+	  OSX  10.x
 
 ####	Native:
-	Qemu ARM VersatilePB
+	  Qemu ARM VersatilePB
+
+####	Coming soon:  RiscV (native/bsd/linux)
