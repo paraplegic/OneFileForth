@@ -1,4 +1,4 @@
-#OneFileForth
+# OneFileForth
 
 	A single file implementation of a non-standard Forth written in the FIG style
 	This project is hosted on GitHub, and can be cloned as follows:
@@ -15,7 +15,7 @@
 		make test
 		./off
 
-		-- MiniForth-Hosted alpha Version: 00.01.48F
+		-- OneFileForth-Hosted alpha Version: 00.01.48F
 		-- www.ControlQ.com
 		ok 
 
@@ -30,12 +30,12 @@
 
 		make qemu
 
-		qemu-system-arm -M versatilepb -m 1024M -nographic -kernel MiniForth.bin 
+		qemu-system-arm -M versatilepb -m 1024M -nographic -kernel OneFileForth.bin 
 		pulseaudio: set_sink_input_volume() failed
 		pulseaudio: Reason: Invalid argument
 		pulseaudio: set_sink_input_mute() failed
 		pulseaudio: Reason: Invalid argument
-		-- MiniForth-Native alpha Version: 00.01.31F
+		-- OneFileForth-Native alpha Version: 00.01.31F
 		-- www.ControlQ.com
 		ok
 
