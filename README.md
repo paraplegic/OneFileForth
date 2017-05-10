@@ -1,4 +1,4 @@
-#OneFileForth
+# OneFileForth
 
 	A single file implementation of a non-standard Forth written in the FIG style
 	This project is hosted on GitHub, and can be cloned as follows:
@@ -13,9 +13,9 @@
 	on Linux and/or BSD:
 
 		make test
-		./mff
+		./off
 
-		-- MiniForth-Hosted alpha Version: 00.01.31F
+		-- OneFileForth-Hosted alpha Version: 00.01.48F
 		-- www.ControlQ.com
 		ok 
 
@@ -28,14 +28,14 @@
 	similar).  Assuming you have an appropriate X compilation tool, and QEMU, you can test the native
 	version by typing:
 
-		make -f QEMU.mk qemu
+		make qemu
 
-		qemu-system-arm -M versatilepb -m 1024M -nographic -kernel MiniForth.bin 
+		qemu-system-arm -M versatilepb -m 1024M -nographic -kernel OneFileForth.bin 
 		pulseaudio: set_sink_input_volume() failed
 		pulseaudio: Reason: Invalid argument
 		pulseaudio: set_sink_input_mute() failed
 		pulseaudio: Reason: Invalid argument
-		-- MiniForth-Native alpha Version: 00.01.31F
+		-- OneFileForth-Native alpha Version: 00.01.31F
 		-- www.ControlQ.com
 		ok
 
@@ -57,9 +57,12 @@
 ### Tested
 
 ####	Hosted:
-	FreeBSD 10.2
-	Debian  Jesse
-	OSX  ??
+	  FreeBSD 10.2
+	  Debian  Jesse
+	  RaspberyPi Zero W running Raspbian Jesse
+	  OSX  10.x
 
 ####	Native:
-	Qemu ARM VersatilePB
+	  Qemu ARM VersatilePB
+
+####	Coming soon:  RiscV (native/bsd/linux)
