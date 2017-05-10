@@ -17,7 +17,7 @@ FRT =../code
 SRC =OneFileForth.c
 OBJ =$(OUT)/off $(OUT)/offorth
 FAST=-D NOCHECK
-CCOPT=-g -O0
+CCOPT=-g -O2
 OSTYPE != uname -s
 
 include $(OSTYPE).mk

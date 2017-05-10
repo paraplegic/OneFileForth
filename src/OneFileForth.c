@@ -391,7 +391,6 @@ void infile();
 void filename();
 void outfile();
 void closeout();
-void Memset();
 #ifdef HOSTED
 void isfile();
 void sndtty();
@@ -437,6 +436,7 @@ void code();
 void data();
 void align();
 void flash_init();
+void fill();
 
 /*
   -- dictionary is simply an array of struct ...
@@ -592,7 +592,7 @@ Dict_t Primitives[] = {
   { SCratch,	"scratch", Normal, NULL },
   { pad,	"pad", Normal, NULL },
   { comment,	"(", Immediate, NULL },
-  { slashcomment,	"//", Immediate, NULL },
+  { slashcomment,	"\\", Immediate, NULL },
   { dotcomment,	".(", Immediate, NULL },
   { quote,	"\"", Immediate, NULL },
   { dotquote,	".\"", Immediate, NULL },
@@ -603,7 +603,6 @@ Dict_t Primitives[] = {
   { filename,	"filename", Normal, NULL },
   { outfile,	"outfile", Normal, NULL },
   { closeout,	"closeout", Normal, NULL },
-  { Memset,	"memset", Normal, NULL },
 #ifdef HOSTED
   { isfile,	"isfile", Normal, NULL },
   { opentty,	"opentty", Normal, NULL },
@@ -647,6 +646,7 @@ Dict_t Primitives[] = {
   { code,	"code", Normal, NULL }, // ( -- adr )
   { data,	"data", Normal, NULL }, // ( -- adr )
   { align,	"align", Normal, NULL }, // ( adr -- adr' )
+  { fill,	"fill", Normal, NULL }, // ( adr -- adr' )
   { NULL, 	NULL, 0, NULL }
 } ;
 
@@ -1900,6 +1900,7 @@ void err_throw( Str_t whence, Err_t err ){
 
 void catch(){
   Wrd_t sz ;
+  Input_t *input = &InputStack[ in_This ];
 
   switch( error_code ){
     case err_OK:
@@ -1976,6 +1977,8 @@ void catch(){
 #endif
 
  reset:
+  put_str( "-- Last input: ") ; 
+  put_str( input->bytes ) ; cr() ;
   dump() ;
   q_reset() ;
   sz = fmt( "-- Attempting Reset.\n" ) ;
@@ -2162,8 +2165,11 @@ void comment(){
 
 void slashcomment()
 {
-  Input_t *input = &InputStack[ in_This ] ; 
-  while( !ch_matches( input->bytes[input->bytes_this++], "\n\r" ) ) ;
+  Input_t *input = &InputStack[ in_This ];
+
+  while( !ch_matches( input->bytes[input->bytes_this++], "\r\n" ) );
+  input->bytes_this++ ;
+
 }
 
 void dotcomment(){
@@ -2831,19 +2837,6 @@ Wrd_t io_cbreak( int fd ){
 #endif
 }
 
-
-void Memset(){	/* ( val ptr len -- ) */
-  Byt_t byt ;
-  Str_t ptr ;
-  Wrd_t len ;
-
-  chk( 3 ) ; 
-  len = (Wrd_t) pop() ;
-  ptr = (Str_t) pop() ;
-  byt = (Byt_t) pop() & 0xff ;
-  str_set( ptr, byt, len ) ;
-}
-
 void waitrdy(){		/* ( fd secs usecs -- flag ) */
 #ifdef HOSTED
 #if !defined( __WIN32__ )
@@ -3382,9 +3375,9 @@ int sign_is_negative = 0 ;
 void fmt_start() 	// ( n -- <ptr> n )
 {
   sign_is_negative = 0 ;
-  push( 0 ) ; 
   Buf() ;
-  Memset() ;	// clear out the tmp buffer ...
+  push( 0 ) ; 
+  fill() ;	// clear out the tmp buffer ...
   Buf() ;
   add() ; 	// this buffer fills backwards 
   minusminus() ;
@@ -3550,4 +3543,17 @@ void flash_init() // ( -- )
   {
     flash[i] = 0xdeadbeef ;
   }
+}
+
+void fill() // ( dst n char -- )
+{
+  Byt_t ch ;
+  Wrd_t n ;
+  Str_t dst ;
+
+  chk( 3 ) ; 
+  ch = (Byt_t) pop() ;
+  n = (Wrd_t) pop() ;
+  dst = (Str_t) pop() ;
+  str_set( dst, ch, n ) ;
 }
