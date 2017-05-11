@@ -10,7 +10,7 @@ include $(SRC)/$(OSTYPE).mk
 
 AARCH = -march=armv5t
 AOPS = --warn --fatal-warnings $(AARCH)
-COPS = -Wall -O2 -nostdlib -nostartfiles -ffreestanding $(AARCH)
+COPS = -Wall -O2 -nostdlib -nostartfiles -ffreestanding $(AARCH) -DNATIVE=1
 
 all:	$(OUT)/OneFileForth-$(OS)-$(ARCH).bin
 

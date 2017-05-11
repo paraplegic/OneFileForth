@@ -94,13 +94,18 @@
 
 #ifdef __arm__
 #if defined( linux )
-#define HOSTED
-#undef NATIVE
+// #define HOSTED
+// #undef NATIVE
 #else
+// #undef HOSTED
+// #define NATIVE
+#endif
+#endif
+
+#ifdef NATIVE
 #undef HOSTED
-#define NATIVE
 #endif
-#endif
+
 
 #define sz_INBUF		127			// bytes
 #define sz_STACK		32			// cells
