@@ -40,6 +40,8 @@
 #include <stdarg.h>
 #include <stdint.h>
 
+// trying to avoid this to allow
+// bare metal support ...
 #ifdef NEVER
 #include <stdio.h>
 #include <string.h>
@@ -74,6 +76,13 @@
 #define HOSTED
 #endif
 
+#if defined (__WIN32__)
+#include <stdint.h>
+#define HOSTED
+#endif
+
+// word size will be derived from the architecture
+// compiler predefines, and inferred as follows:
 #if defined (avr) || defined (AVR)
 #include <stdint.h>
 #define _WORDSIZE 	2
@@ -87,25 +96,12 @@
 #define _WORDSIZE 	8
 #endif
 
-#if defined (__WIN32__)
-#include <stdint.h>
-#define HOSTED
-#endif
-
-#ifdef __arm__
-#if defined( linux )
-// #define HOSTED
-// #undef NATIVE
-#else
-// #undef HOSTED
-// #define NATIVE
-#endif
-#endif
-
+// by pushing NATIVE on the compile line, we will
+// override the HOSTED (default) mode, and not rely
+// upon system calls including read()/write() to exist.
 #ifdef NATIVE
 #undef HOSTED
 #endif
-
 
 #define sz_INBUF		127			// bytes
 #define sz_STACK		32			// cells
@@ -123,6 +119,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <dlfcn.h>
+
 volatile sig_atomic_t sigval = 0 ;
 
 #define OFF_PATH	"OFF_PATH"
