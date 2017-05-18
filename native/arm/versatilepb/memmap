@@ -10,3 +10,4 @@ SECTIONS
    .text : { *(.text*) } > ram
    .bss  : { *(.text*) } > ram
 }
+

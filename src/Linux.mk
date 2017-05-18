@@ -2,4 +2,7 @@ LDOPTS:=-ldl
 CC:=gcc
 
 ARMGNU ?= arm-linux-gnueabi
-LDPTH ?= /usr/lib/gcc/arm-linux-gnueabi/4.9/libgcc.a
+## Debian Jessie ... crosstools
+## LDPTH ?= /usr/lib/gcc/arm-linux-gnueabi/4.9/libgcc.a
+## Debian Stretch ... crosstools
+LDPTH ?= -L /usr/arm-linux-gnueabi/lib

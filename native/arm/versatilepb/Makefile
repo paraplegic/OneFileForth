@@ -10,12 +10,12 @@ include $(SRC)/$(OSTYPE).mk
 
 AARCH = -march=armv5t
 AOPS = --warn --fatal-warnings $(AARCH)
-COPS = -Wall -O2 -nostdlib -nostartfiles -ffreestanding $(AARCH) -DNATIVE=1
+COPS = -Wall -O2 -nostdlib -nostartfiles -ffreestanding $(AARCH) -DNATIVE=$(OS)
 
 all:	$(OUT)/OneFileForth-$(OS)-$(ARCH).bin
 
 $(OUT)/OneFileForth-$(OS)-$(ARCH).bin :  qemu_versatile_start.o OneFileForth.o memmap
-	$(ARMGNU)-ld qemu_versatile_start.o OneFileForth.o $(LDPTH) $(LDPTH) -T memmap -o OneFileForth.elf ## --print-map
+	$(ARMGNU)-gcc qemu_versatile_start.o OneFileForth.o -nostartfiles $(LDPTH) -T memmap -o OneFileForth.elf -Wl,--build-id=none
 	$(ARMGNU)-objdump -D OneFileForth.elf > OneFileForth.list
 	$(ARMGNU)-objcopy OneFileForth.elf -O binary $(OUT)/OneFileForth-$(OS)-$(ARCH).bin
 
@@ -27,11 +27,13 @@ OneFileForth.o : $(SRC)/OneFileForth.c
 	## $(ARMGNU)-gcc -c $(COPS) $(SRC)/OneFileForth.c -o OneFileForth.o
 
 qemu:	$(OUT)/OneFileForth-$(OS)-$(ARCH).bin
-	qemu-system-arm -M versatilepb -m 1024M -nographic -kernel $(OUT)/OneFileForth-$(OS)-$(ARCH).bin 
+	qemu-system-arm -M versatilepb -m 256M -nographic -kernel $(OUT)/OneFileForth-$(OS)-$(ARCH).bin 
 
+map:	load.map
+	$(ARMGNU)-gcc qemu_versatile_start.o OneFileForth.o -nostartfiles $(LDPTH) -T memmap -o OneFileForth.elf -Wl,--build-id=none -Wl,--print-map > load.map
 
 clean:
-	rm -rf *.o *.bin *.list *.elf
+	rm -rf *.o *.bin *.list *.elf *.map
 
 realclean:	clean
 	rm -rf $(OUT)/OneFileForth-$(OS)-$(ARCH).bin
