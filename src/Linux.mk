@@ -1,4 +1,5 @@
-LDOPTS:=-ldl
+LDOPTS:=-ldl 
+MAP:=-Wl,--print-map
 CC:=gcc
 
 ARMGNU ?= arm-linux-gnueabi

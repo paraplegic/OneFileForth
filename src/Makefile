@@ -43,9 +43,15 @@ clean:
 	rm -rf *.bin
 	rm -rf *.list
 	rm -rf cscope.out
+	rm -rf load.map
 
 realclean:	clean
-	rm -rf $(OUT)/*
+	rm -rf $(OUT)/* 
+
+map:	$(SRC)
+	@echo "Building loadmap for $(OSTYPE)"
+	$(CC) $(CCOPT) -o ./tmp.$$ $(FAST) $(LDOPTS) $(SRC) $(MAP) > load.map
+	rm -rf ./tmp.$$
 
 edit:	$(SRC)
 	cscope -b $(SRC)
