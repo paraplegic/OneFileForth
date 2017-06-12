@@ -3180,10 +3180,10 @@ void last_will(){
 }
 
 void spinner(){
-  static Byt_t x = 0 ;
+  static Wrd_t ix = 0 ;
   Byt_t f[4] = { '-', '\\', '|', '/' } ;
 
-  push( f[ x++ % 4 ] ) ;
+  push( f[ ix++ % 4 ] ) ;
   emit();
   push( '\r' ) ;
   emit();
