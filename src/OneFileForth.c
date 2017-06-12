@@ -820,7 +820,7 @@ void usage(int argc, char **argv )
   
 }
 
-#define STD_ARGS "i:x:q:t"
+#define STD_ARGS "i:x:qt"
 void chk_args( int argc, char **argv )
 {
   int ch, err=0 ; 
@@ -837,10 +837,10 @@ void chk_args( int argc, char **argv )
         case 'q':
           quiet++ ;
           break ;
-	case 't':
-	  push( 1 );
-	  trace() ;
-	  wrd_store();
+		case 't':
+		  push( 1 );
+		  trace() ;
+		  wrd_store();
           break ;
         default:
           err++ ;
@@ -965,7 +965,11 @@ int main( int argc, char **argv ){
   {
      push( (Str_t) in_File );
      infile() ;
-  } else {
+  } 
+  if( !isNul( in_Word ) )
+  {
+
+      quiet++ ; 
       do_x_Once = 0 ; 
       push( (Cell_t) lookup( in_Word ) ) ;
       execute() ;
@@ -2982,45 +2986,45 @@ void infile()
   }
 
 #ifdef HOSTED
-  Wrd_t fd ;
   Str_t fn = (Str_t) pop() ;
 
   if( in_This < sz_FILES ) // push a new input file ...
   {
-    in_This++ ;
-	InputStack[ in_This ].bytes_read = -1 ; 
-	InputStack[ in_This ].bytes_this = -1 ; 
-    InputStack[ in_This ].name = str_cache( fn ) ;
-    InputStack[ in_This ].bytes = (Str_t) inbuf[ in_This ] ; 
 	if( !isNul( fn ) )
 	{
-		fd = open( fn, O_RDONLY ) ; // check file name provided ...
-		if( fd < 0 )
+		in_This += 1 ;
+		InputStack[ in_This ].bytes_read = -1 ; 
+		InputStack[ in_This ].bytes_this = -1 ; 
+	    InputStack[ in_This ].name = str_cache( fn ) ;
+	    InputStack[ in_This ].bytes = (Str_t) inbuf[ in_This ] ; 
+		InputStack[ in_This ].file = open( InputStack[ in_This ].name , O_RDONLY ) ;
+
+		if( InputStack[ in_This ].file < 0 )
 		{
+			str_uncache( fn ) ;
 			if( !isNul( off_path ) ) // add the file path and try again ...
 			{
 				str_format( (Str_t) tmp_buffer, sz_INBUF, "%s/%s", (Str_t) off_path, (Str_t) fn ) ;
-				fn = (Str_t) tmp_buffer ;
-				fd = open( fn, O_RDONLY ) ;
-				if( fd < 0 )
-				{
-					throw( err_NoFile ) ;
-					return ;
-				}
-			} else {
-              in_This-- ;
-			  throw( err_NoFile ) ;
-			  return ;
-            }
-           
+    			InputStack[ in_This ].name = str_cache( tmp_buffer ) ;
+				InputStack[ in_This ].file = open( InputStack[ in_This ].name , O_RDONLY ) ;
+			} 
 		}
+
+		if( InputStack[ in_This ].file < 0 )
+		{
+			in_This-- ;
+			throw( err_NoFile ) ;
+		}
+
 	}
-	InputStack[ in_This ].file = fd ;
+
 	return ;
-  }
+
+  } 
 
   throw( err_InStack ) ;
   return ;
+
 #endif
 }
 
