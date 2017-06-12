@@ -2173,8 +2173,7 @@ void slashcomment()
 {
   Input_t *input = &InputStack[ in_This ];
 
-  while( !ch_matches( input->bytes[input->bytes_this++], "\r\n" ) );
-  input->bytes_this++ ;
+  while( !ch_matches( input->bytes[input->bytes_this++], "\r\n" ) ) input->bytes_this++ ;
 
 }
 
