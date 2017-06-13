@@ -221,7 +221,7 @@ Str_t  scratch = (Str_t) StartOf( scratch_buffer ) ;
 
 Byt_t  err_buffer[sz_INBUF] ;
 Byt_t  tmp_buffer[sz_INBUF] ;
-Str_t  tmp  = (Str_t) StartOf( tmp_buffer ) ;
+// Str_t  tmp  = (Str_t) StartOf( tmp_buffer ) ;
 uCell_t _ops = 0 ; 
 Byt_t	Locale[sz_STACK];
 
@@ -242,6 +242,7 @@ Str_t	off_path = (Str_t) NULL ;
 #define rnos		(rtos-1)
 #define isNul( x )	(x == NULL)
 #define WHITE_SPACE	" \t\r\n"
+#define EOL			"\n\r"
 #define inEOF		"<eof>"
 #define MaxStr( x, y )	((str_length( x ) > str_length( y )) ? str_length( x ) : str_length( y ))
 #define isMatch( x, y )	(str_match( (char *) x, (char *) y, MaxStr( (char *) x, (char *) y )))
@@ -249,7 +250,7 @@ Str_t	off_path = (Str_t) NULL ;
 #define __THIS__        ( (Str_t) __FUNCTION__ )
 #define throw( x )	err_throw( str_error( (char *) err_buffer, sz_INBUF, __THIS__, __LINE__), x )
 #define Abs( x )	((x < 0) ? (x*-1) : x) 
-#define UNUSED( x )	Cell_t x __attribute__((unused))
+#define UNUSED( x )	x __attribute__((unused))
 
 #ifdef NOCHECK
 #define chk( x )	{}
@@ -745,7 +746,7 @@ typedef enum  {
 Str_t resetfrom[] = {
   "unexpected",
   "sig_hdlr",
-  "catch",
+  "catch handler",
   "application",
   "checkstack",
   "cold start",
@@ -853,6 +854,8 @@ void chk_args( int argc, char **argv )
 
 
 #endif
+
+Byt_t  found_eol = (Byt_t) 0 ;
 
 // reset never forgets ...
 // forget does that (see below).
@@ -1038,8 +1041,7 @@ Wrd_t utf8_encoder( Wrd_t ch, Str_t buf, Wrd_t len )
 Wrd_t ch_index( Str_t str, Byt_t c ){
   Byt_t *p, *start ; 
 
-  start = (Byt_t *) StartOf( str ) ;
-  p = start ;
+  p = start = (Byt_t *) StartOf( str ) ;
   while( *p ){
     if( *p == c ){
       return p - start ;
@@ -1053,12 +1055,13 @@ Str_t str_token( Input_t *input )
 {
   int tkn = 0 ;
   static Byt_t acc[sz_INBUF] ;
-  str_set( (Str_t) acc, 0, sz_INBUF ) ;
+  found_eol = (Byt_t) 0 ; 
 
   do {
 		if( input->bytes_read < 1 )
 		{
 			prompt() ;
+			str_set( input->bytes, 0, sz_INBUF ) ;
 			input->bytes_read = inp( INPUT, input->bytes, sz_INBUF ) ;
 			if( input->bytes_read == 0 )
 			{
@@ -1075,6 +1078,7 @@ Str_t str_token( Input_t *input )
 			continue ;
 		}
 
+
 		if( !ch_matches( input->bytes[input->bytes_this++], WHITE_SPACE ) )
 		{
 			acc[tkn++] = input->bytes[input->bytes_this-1] ;
@@ -1084,6 +1088,12 @@ Str_t str_token( Input_t *input )
 
 		if( tkn > 0 )
 		{
+  			// some words would like to know when we hit eol, so flag it in a global.
+			if( ch_matches( input->bytes[input->bytes_this-1], EOL ) )
+			{
+				found_eol = input->bytes[input->bytes_this-1] ;
+			}
+
 			return (Str_t) acc ;
 		}
 
@@ -2175,9 +2185,10 @@ void comment(){
 
 void slashcomment()
 {
-  Input_t *input = &InputStack[ in_This ];
+  Str_t UNUSED( tkn ) ;
 
-  while( !ch_matches( input->bytes[input->bytes_this++], "\r\n" ) ) input->bytes_this++ ;
+  // toss tokens until the end of line is reached ... 
+  do { tkn = str_token( &InputStack[ in_This ] ) ; } while ( ! found_eol ) ;
 
 }
 
@@ -2970,7 +2981,7 @@ void closetty(){
 
 void infile()
 {
-  UNUSED( dummy );
+  Cell_t UNUSED( dummy );
   chk( 1 ) ;
 
   if( in_This < 0 ) // intialize ...
