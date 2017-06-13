@@ -4,6 +4,10 @@
  1 trace !
 )
 
+" hexdump.rf" infile
+
+.( ::: loading object library ) cr
+
 : Point create , , does> dup @ swap 1 cells + @ ;
 : pt_add ( x y a b -- x+a y+b ) >r >r swap r> + swap r> + ;
 : pt_set-y ( n dp -- )	>body 2 cells - ! ;

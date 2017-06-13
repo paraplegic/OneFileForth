@@ -6,6 +6,9 @@
   a simple format string (built backwards).
 )
 
+cold
+.( ::: loading ansi library ) cr
+
 " obj.rf" infile
 
 0x1b constant esc
@@ -22,19 +25,25 @@
   const >jr
 }} BoxStyle
 
+\ create lookup tables for the unicode characters used in box construction.
+
+\ single box
 BoxStyle s_single
 	s_single  1 cells + 0x250c !++ 0x2510 !++ 0x2514 !++ 0x2518 !++ 0x2500 !++ 0x2502 !++ 0x251c !++ 0x2524 !++ drop
 
+\ double box
 BoxStyle s_double
 	s_double  1 cells + 0x2554 !++ 0x2557 !++ 0x255a !++ 0x255d !++ 0x2550 !++ 0x2551 !++ 0x2560 !++ 0x2563 !++ drop
 
+\ rounded corner box
 BoxStyle s_rounded
 	s_rounded 1 cells + 0x256d !++ 0x256e !++ 0x2570 !++ 0x256f !++ 0x2500 !++ 0x2502 !++ 0x251c !++ 0x2524 !++ drop
 
+\ bold box
 BoxStyle s_bold
 	s_bold    1 cells + 0x250f !++ 0x2513 !++ 0x2517 !++ 0x251b !++ 0x2501 !++ 0x2503 !++ 0x2523 !++ 0x252b !++ drop
 
-( get coordinates from the ESC[<y>;<x>R sequence returned by t_cloc ... )
+\ get coordinates from the ESC[<y>;<x>R sequence returned by t_cloc
 : parse_cursor_coordinates ( -- y x ) 
 	buf drop 2 + 
 	0 >r
@@ -54,6 +63,7 @@ BoxStyle s_bold
 	r> r> swap
 ;
 
+\ building the ANSI terminal escape sequences backwards
 : t_to ( y x -- )   <# ascii H hold #s drop over ascii ; hold #s lbr hold esc hold #> type drop ;
 : t_up ( n -- )     <# ascii A hold #s lbr hold esc hold #> type ;
 : t_down ( n -- )   <# ascii B hold #s lbr hold esc hold #> type ;
@@ -73,6 +83,8 @@ BoxStyle s_bold
 ;
 : t_size ( -- y x ) 999 999 t_to t_cloc ;
 
+
+\ create data objects with methods using the obj.rf library
 
 {{
   field .position 
@@ -111,9 +123,6 @@ BoxStyle s_bold
 	drop
 ;
 
-
-.( create box objects )
-( ================== )
 10 10 Point bold_loc 
 12 12 Point single_loc
 14 14 Point cool_loc

@@ -3,6 +3,8 @@
   not unlike the hexdumps we are all familiar with ...
 )
 
+.( ::: loading hexdump library ) cr
+
 : space  ( -- )   32 emit ;
 : spaces ( n -- ) 0 do space loop ; 
 : hex.   ( n -- ) hex <# 4 0 do # loop ascii _ hold 4 0 do # loop ascii x hold ascii 0 hold #> type decimal ;
