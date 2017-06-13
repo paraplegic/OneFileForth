@@ -8,7 +8,7 @@
   smaller end.
 
   Written by Robert S. Sciuk of Control-Q Research 
-  Copyright 1982 - 2016.
+  Copyright 1982 - 2017.
 
   LICENSE:
 
@@ -25,10 +25,10 @@
 
   To use, simply download this file, and use your trusty C compiler:
 
-	clang -o mforth OneFileForth.c
+	clang -o off -D NOCHECK -O2 OneFileForth.c
 
-  Some systems might require the -ldl option, and embedded systems
-  might require a bit more effort.  No documentation is available, 
+  Some hosted systems might require the -ldl option, and embedded systems
+  might require a bit more effort.  No documentation is yet available, 
   and no warranty is offered, expressed or implied.  Enjoy.
 
 */
