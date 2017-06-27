@@ -6,7 +6,6 @@
   a simple format string (built backwards).
 )
 
-warm
 .( ::: loading ansi library ) cr
 
 " obj.rf" infile
