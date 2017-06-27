@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"50"
+#define REVISION	"51"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -191,7 +191,7 @@ typedef uWrd_t		uCell_t ;
 
 #define StartOf(x)	(&x[0])
 
-//  -- a stack ...
+//  -- a data stack ...
 Cell_t stack[sz_STACK+1] ;
 Cell_t *tos = (Cell_t *) StartOf( stack ) ;
 
@@ -281,6 +281,7 @@ void udot();
 void bye(); 
 void prompt(); 
 void words(); 
+void rdepth(); 
 void depth(); 
 void dupe(); 
 void rot(); 
@@ -387,7 +388,7 @@ void SCratch();
 void Buf();
 void pad();
 void comment();
-void slashcomment();
+void flushtoeol();
 void dotcomment();
 void quote();
 void dotquote();
@@ -494,6 +495,7 @@ Dict_t Primitives[] = {
   { udot,	"u.", Normal, NULL },
   { bye,	"bye", Normal, NULL },
   { words,	"words", Normal, NULL },
+  { rdepth,	"rdepth", Normal, NULL },
   { depth,	"depth", Normal, NULL },
   { dupe,	"dup", Normal, NULL },
   { qdupe,	"?dup", Normal, NULL },
@@ -599,7 +601,7 @@ Dict_t Primitives[] = {
   { SCratch,	"scratch", Normal, NULL },
   { pad,	"pad", Normal, NULL },
   { comment,	"(", Immediate, NULL },
-  { slashcomment,	"\\", Immediate, NULL },
+  { flushtoeol,	"\\", Immediate, NULL },
   { dotcomment,	".(", Immediate, NULL },
   { quote,	"\"", Immediate, NULL },
   { dotquote,	".\"", Immediate, NULL },
@@ -1782,6 +1784,13 @@ void branch(){
   rpush( *x ) ;
 }
 
+void rdepth(){
+  Cell_t d ;
+
+  d = rtos - StartOf( rstack ) ;
+  push( d ) ; 
+}
+
 void depth(){
   Cell_t d ;
 
@@ -2003,6 +2012,9 @@ void catch(){
   put_str( input->bytes ) ; cr() ;
   dump() ;
   q_reset() ;
+  sz = fmt( "-- Remaining input flushed.\n" ) ;
+  outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+  flushtoeol();
   sz = fmt( "-- Attempting Reset.\n" ) ;
   outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
 #ifdef HOSTED
@@ -2185,7 +2197,7 @@ void comment(){
   drop();
 }
 
-void slashcomment()
+void flushtoeol()
 {
   Str_t UNUSED( tkn ) ;
 
@@ -2593,15 +2605,15 @@ void call(){
 }
 
 void tracing( Dict_t *dp ){
-  if( !Trace ){
-    return ;
-  }
+
   dotS() ;
   put_str( "\t\t" ) ;
+
   if( isNul( dp ) )
     put_str( "next" ) ;
   else 
     put_str( dp ->nfa ) ;
+
   cr() ;
 }
 
@@ -2612,12 +2624,17 @@ void execute(){
   dp = (Dict_t *) pop() ;
   if( !isNul( dp ) )
   {
+
     if( dp ->pfa ){
       rpush( (Cell_t) dp->pfa ) ;
     }
-    tracing( dp ) ;
+
+    if( Trace )
+       tracing( dp ) ;
+
     (*dp ->cfa)() ;
     catch() ;
+
   }
 }
 
