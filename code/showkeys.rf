@@ -1,0 +1,1 @@
+: showkeys begin key dup ascii x == if . ." Exit" cr leave then . begin ?key while key . repeat again ;

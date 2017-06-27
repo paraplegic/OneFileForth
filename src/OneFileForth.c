@@ -705,6 +705,7 @@ typedef enum {
   err_BadString,
   err_NoFile,
   err_InStack,
+  err_Range,
   err_Undefined
 } Err_t ;
 
@@ -729,6 +730,7 @@ Str_t errors[] = {
   "-- Bad String.",
   "-- No file access.",
   "-- Input stack overflow.",
+  "-- Range error.",
   "-- Undefined error.",
   NULL,
 } ;
@@ -1430,7 +1432,7 @@ void banner(){
 
   n = fmt( "-- OneFileForth-%s alpha Version: %s.%s.%s%c (%s)\n", FLAVOUR, MAJOR, MINOR, REVISION, dbg, Locale ) ;
   outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
-  n = fmt( "-- www.ControlQ.com\n" ) ;
+  n = fmt( "-- www.ControlQ.com\n\n" ) ;
   outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
 }
 
@@ -1989,7 +1991,7 @@ void catch(){
   dump() ;
   sz = fmt( "-- Stack Dump: Depth = " ) ;
   outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
-  dotS() ;
+  dotS() ; cr() ;
   sz = fmt( "-- Abnormal Termination.\n" ) ;
   outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
 #ifdef HOSTED
@@ -2269,7 +2271,7 @@ void pad(){
   push( n ) ;
 }
 
-void cmove(){ 
+void cmove(){  // ( n dst src -- )
   Cell_t len ; 
   Str_t src, dst ;
 
@@ -2720,8 +2722,14 @@ void errval(){
 }
 
 void errstr(){
+
   register Cell_t err = pop() ;
-  push( errors[ err ] ) ;
+
+  if( err >= err_OK && err <= err_Undefined )
+     push( errors[ err ] ) ;
+  else
+     throw( err_Range ) ;
+  return ;
 }
 
 void trace(){
