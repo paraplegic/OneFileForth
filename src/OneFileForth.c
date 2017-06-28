@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"51"
+#define REVISION	"52"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -460,16 +460,17 @@ typedef struct _inbuf_ {
   Wrd_t file ;
   Wrd_t bytes_read ;
   Wrd_t bytes_this ;
+  Wrd_t in_line ;
   Str_t name ;
   Str_t bytes ;
 } Input_t ;
 
 Input_t InputStack[sz_FILES] = {
-	{ .file = -1, .bytes_read = -1, .bytes_this = -1, .name = (Str_t) NULL, .bytes = (Str_t) &inbuf[0] },
+	{ .file = -1, .bytes_read = -1, .bytes_this = -1, .in_line = 0, .name = (Str_t) NULL, .bytes = (Str_t) &inbuf[0] },
 #ifdef HOSTED
-	{ .file = -1, .bytes_read = -1, .bytes_this = -1, .name = (Str_t) NULL, .bytes = (Str_t) &inbuf[1] },
-	{ .file = -1, .bytes_read = -1, .bytes_this = -1, .name = (Str_t) NULL, .bytes = (Str_t) &inbuf[2] },
-	{ .file = -1, .bytes_read = -1, .bytes_this = -1, .name = (Str_t) NULL, .bytes = (Str_t) &inbuf[3] },
+	{ .file = -1, .bytes_read = -1, .bytes_this = -1, .in_line = 0, .name = (Str_t) NULL, .bytes = (Str_t) &inbuf[1] },
+	{ .file = -1, .bytes_read = -1, .bytes_this = -1, .in_line = 0, .name = (Str_t) NULL, .bytes = (Str_t) &inbuf[2] },
+	{ .file = -1, .bytes_read = -1, .bytes_this = -1, .in_line = 0, .name = (Str_t) NULL, .bytes = (Str_t) &inbuf[3] },
 #endif // HOSTED
 } ;
 
@@ -1082,7 +1083,7 @@ Str_t str_token( Input_t *input )
 			continue ;
 		}
 
-
+		// accumulate printing characters in the accumulater for the next token ...
 		if( !ch_matches( input->bytes[input->bytes_this++], WHITE_SPACE ) )
 		{
 			acc[tkn++] = input->bytes[input->bytes_this-1] ;
@@ -1090,15 +1091,22 @@ Str_t str_token( Input_t *input )
 			continue ; 
 		}
 
+	  	// some words (errors and comments) would like to 
+		// know when we hit eol, so flag it in a global.
+		if( ch_matches( input->bytes[input->bytes_this-1], EOL ) )
+		{
+			input->in_line++ ;
+			found_eol = input->bytes[input->bytes_this-1] ;
+		}
+
 		if( tkn > 0 )
 		{
-  			// some words would like to know when we hit eol, so flag it in a global.
-			if( ch_matches( input->bytes[input->bytes_this-1], EOL ) )
-			{
-				found_eol = input->bytes[input->bytes_this-1] ;
-			}
-
 			return (Str_t) acc ;
+		}
+
+		if( found_eol )
+		{
+			return (Str_t) NULL ;
 		}
 
   } while( 1 ) ;
@@ -1363,25 +1371,31 @@ Dict_t *lookup( Str_t tkn ){
   Dict_t *p ;
   Cell_t  i ;
 
-  if( isNul( tkn ) )
-     return (Dict_t *) NULL ;
-
-  if( n_ColonDefs > 0 )
+  if( !isNul( tkn ) )
   {
-    for( i = n_ColonDefs - 1 ; i > -1 ; i-- ){
-      p = &Colon_Defs[ i ] ;
-      if( isMatch( tkn, p ->nfa ) ){
-        return p ;
-      }
-    }
-  }
 
-  p = StartOf( Primitives ) ;
-  while( p ->nfa ){
-   if( isMatch( tkn, p ->nfa ) ){
-    return p ;
-   }
-   p++ ;
+	if( n_ColonDefs > 0 )
+	{
+		for( i = n_ColonDefs - 1 ; i > -1 ; i-- )
+		{
+			p = &Colon_Defs[ i ] ;
+			if( isMatch( tkn, p ->nfa ) )
+			{
+				return p ;
+			}
+		}
+    }
+
+	p = StartOf( Primitives ) ;
+	while( p ->nfa )
+	{
+		if( isMatch( tkn, p ->nfa ) )
+		{
+			return p ;
+		}
+		p++ ;
+	}
+
   }
 
   return (Dict_t *) NULL ;
@@ -2505,7 +2519,6 @@ void doConstant(){
 }
 
 void constant(){
-
   create() ;
   comma() ;
 
@@ -2514,14 +2527,9 @@ void constant(){
 }
 
 void variable(){
-
   create();
   push( 0 ) ; 
   comma() ;
-
-  Dict_t *dp = &Colon_Defs[n_ColonDefs-1] ;
-  dp ->cfa = pushPfa ;
-  
 }
 
 void colon(){
@@ -3016,6 +3024,7 @@ void infile()
 	InputStack[ in_This ].file = 0 ; 
 	InputStack[ in_This ].bytes_read = -1 ; 
 	InputStack[ in_This ].bytes_this = -1 ; 
+	InputStack[ in_This ].in_line = 0 ; 
 	InputStack[ in_This ].name = str_cache( "tty" ) ;
 	InputStack[ in_This ].bytes = (Str_t) inbuf[ in_This ] ; 
 	return ;
@@ -3031,6 +3040,7 @@ void infile()
 		in_This += 1 ;
 		InputStack[ in_This ].bytes_read = -1 ; 
 		InputStack[ in_This ].bytes_this = -1 ; 
+		InputStack[ in_This ].in_line = 0 ; 
 	    InputStack[ in_This ].name = str_cache( fn ) ;
 	    InputStack[ in_This ].bytes = (Str_t) inbuf[ in_This ] ; 
 		InputStack[ in_This ].file = open( InputStack[ in_This ].name , O_RDONLY ) ;
@@ -3051,7 +3061,6 @@ void infile()
 			in_This-- ;
 			throw( err_NoFile ) ;
 		}
-
 	}
 
 	return ;
@@ -3519,6 +3528,9 @@ void dump()
   Cell_t  **p ;
   Dict_t *dp ;
 
+#define INPUT			InputStack[ in_This ].file
+  outp( OUTPUT, (Str_t) tmp_buffer, str_format( (Str_t) tmp_buffer, sz_INBUF, "-- File: %s Line: %d:\n", 
+	InputStack[ in_This ].name, InputStack[ in_This ].in_line ) ) ;
   outp( OUTPUT, (Str_t) tmp_buffer, str_format( (Str_t) tmp_buffer, sz_INBUF, "-- Forth Backtrace:\n" ) ) ;
   while( rtos != StartOf( rstack ) )
   {

@@ -1,5 +1,5 @@
-( 
- Object type programming in Forth 
+(
+ Object type programming in Forth
  Simplistic object using create.does>
  1 trace !
 )
@@ -14,7 +14,7 @@
 : pt_set-x ( n dp -- )	>body 1 cells - ! ;
 : pt_reset ( y x pfa -- ) dup rot swap pt_set-x pt_set-y ;
 
-( 
+(
   a struct like object
 )
 

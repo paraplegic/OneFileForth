@@ -1,4 +1,4 @@
-( 
+(
 
   Terminal escape sequences
 
@@ -24,9 +24,9 @@
   const >jr
 }} BoxStyle
 
-\ create lookup tables for the unicode characters used in box construction.
+\ create lookup tables for the unicode characters used in box construction.  
 
-\ single box
+\ single box  
 BoxStyle s_single
 	s_single  1 cells + 0x250c !++ 0x2510 !++ 0x2514 !++ 0x2518 !++ 0x2500 !++ 0x2502 !++ 0x251c !++ 0x2524 !++ drop
 
@@ -43,35 +43,54 @@ BoxStyle s_bold
 	s_bold    1 cells + 0x250f !++ 0x2513 !++ 0x2517 !++ 0x251b !++ 0x2501 !++ 0x2503 !++ 0x2523 !++ 0x252b !++ drop
 
 \ get coordinates from the ESC[<y>;<x>R sequence returned by t_cloc
-: parse_cursor_coordinates ( -- y x ) 
-	buf drop 2 + 
+: parse_cursor_coordinates ( -- y x )
+	buf drop 2 +
 	0 >r
-	begin 
+	begin
 		dup c@ ascii ; over != while
 			ascii 0 - r> dup 0 != if 10 * then + >r ++
-	repeat 
+	repeat
 	drop
 	++
 	0 >r
-	begin 
+	begin
 		dup c@ ascii R over != while
 			ascii 0 - r> dup 0 != if 10 * then + >r ++
-	repeat 
+	repeat
 	drop
 	drop
 	r> r> swap
 ;
 
 \ building the ANSI terminal escape sequences backwards
+
+\ move cursor to position y x
 : t_to ( y x -- )   <# ascii H hold #s drop over ascii ; hold #s lbr hold esc hold #> type drop ;
+
+\ move cursor up n rows
 : t_up ( n -- )     <# ascii A hold #s lbr hold esc hold #> type ;
+
+\ move cursor down n rows
 : t_down ( n -- )   <# ascii B hold #s lbr hold esc hold #> type ;
+
+\ move cursor forward n cols
 : t_fwd ( n -- )    <# ascii C hold #s lbr hold esc hold #> type ;
+
+\ move cursor backward n cols
 : t_bwd ( n -- )    <# ascii D hold #s lbr hold esc hold #> type ;
+
+\ save current cursor position
 : t_c_sav ( -- )  0 <# ascii s hold lbr hold esc hold #> type ;
+
+\ return to saved cursor position
 : t_c_ret ( -- )  0 <# ascii u hold lbr hold esc hold #> type ;
+
+\ clear the entire screen
 : t_clear ( -- )  2 <# ascii J hold #s lbr hold esc hold #> type 0 0 t_to ;
-: t_cloc ( -- )  6 <# ascii n hold #s lbr hold esc hold #> type
+
+\ return the current cursor position
+: t_cloc ( -- )
+	6 <# ascii n hold #s lbr hold esc hold #> type
 	buf drop
 	begin
 	  key ascii R over
@@ -80,13 +99,15 @@ BoxStyle s_bold
 	repeat
 	swap c! parse_cursor_coordinates
 ;
+
+\ use a trick to figure out screen size
 : t_size ( -- y x ) 999 999 t_to t_cloc ;
 
 
 \ create data objects with methods using the obj.rf library
 
 {{
-  field .position 
+  field .position
 	-- method >at
   field .style
 	-- method >style
@@ -99,14 +120,14 @@ BoxStyle s_bold
 }} Box
 
 : draw_box ( adr -- )
-	>at t_to 
+	>at t_to
 	>style >ul emit
 	dup .wd 2 - 0 do
 		>style >hl emit
 	loop
 	>style >ur emit
-	dup .ht >r 
-	>at r> 0 pt_add t_to 
+	dup .ht >r
+	>at r> 0 pt_add t_to
 	>style >ll emit
 	dup .wd 2 - 0 do
 		>style >hl emit
@@ -114,15 +135,15 @@ BoxStyle s_bold
  	>style >lr emit
 	>at 1 0 pt_add t_to
 	dup .ht 1 do
-		>at i 0 pt_add t_to 
+		>at i 0 pt_add t_to
 		>style >vl emit
-		dup .wd 2 - t_fwd 
+		dup .wd 2 - t_fwd
 		>style >vl emit
-	loop 
+	loop
 	drop
 ;
 
-10 10 Point bold_loc 
+10 10 Point bold_loc
 12 12 Point single_loc
 14 14 Point cool_loc
 16 16 Point double_loc
@@ -134,7 +155,7 @@ Box bld
 			82	bld .width !
 			22	bld .height !
 
-Box sng 
+Box sng
 	' single_loc sng .position !
 	' s_single	sng .style !
 	' draw_box	sng .draw !
@@ -148,7 +169,7 @@ Box round
 		 	74 	round .width !
 		 	14 	round .height !
 
-Box dbl 
+Box dbl
 	' double_loc dbl .position !
 	' s_double	dbl .style !
 	' draw_box	dbl .draw !
