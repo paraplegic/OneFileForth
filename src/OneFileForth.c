@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"52"
+#define REVISION	"53"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -1175,10 +1175,6 @@ Wrd_t str_literal( Str_t tkn, Wrd_t radix ){
       p++ ;
      }
      break ;
-    case 'O':
-    case 'o': /* octal constant */
-     base = 8 ;
-     break ;
     default: /* none of the above ... start over */
      p = tkn ;
      break ;
@@ -1399,6 +1395,7 @@ Dict_t *lookup( Str_t tkn ){
   }
 
   return (Dict_t *) NULL ;
+
 }
 
 /* 
@@ -1430,11 +1427,11 @@ void quit(){
       dp = lookup( tkn );
       if( isNul( dp ) ){
         push( str_literal( tkn, Base ) ) ;
-        catch() ;
       } else {
         push( (Cell_t) dp ) ; 
         execute() ;
       }
+      catch() ;
     } /* tkn */
   } /* ever */
 } /* quit */
