@@ -29,7 +29,7 @@ OneFileForth.o : $(SRC)/OneFileForth.c
 qemu:	$(OUT)/OneFileForth-$(OS)-$(ARCH).bin
 	qemu-system-arm -M versatilepb -m 256M -nographic -kernel $(OUT)/OneFileForth-$(OS)-$(ARCH).bin 
 
-map:	load.map
+map:
 	$(ARMGNU)-gcc qemu_versatile_start.o OneFileForth.o -nostartfiles $(LDPTH) -T memmap -o OneFileForth.elf -Wl,--build-id=none -Wl,--print-map > load.map
 
 clean:

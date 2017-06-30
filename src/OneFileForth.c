@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"53"
+#define REVISION	"55"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -192,20 +192,20 @@ typedef uWrd_t		uCell_t ;
 #define StartOf(x)	(&x[0])
 
 //  -- a data stack ...
-Cell_t stack[sz_STACK+1] ;
+Cell_t stack[sz_STACK+1] = { 0 } ;
 Cell_t *tos = (Cell_t *) StartOf( stack ) ;
 
 //  -- and a return stack ...
-Cell_t rstack[sz_STACK+1] ;
+Cell_t rstack[sz_STACK+1] = { 0 } ;
 Cell_t *rtos = (Cell_t *) StartOf( rstack ) ;
 
 //  -- and a user stack ...
-Cell_t ustack[sz_STACK+1] ;
+Cell_t ustack[sz_STACK+1] = { 0 } ;
 Cell_t *utos = (Cell_t *) StartOf( ustack ) ;
 
 //  -- some input and scratch buffers ...
-Byt_t  garbage[sz_INBUF] ;
-Byt_t  input_buffer[ sz_FILES * sz_INBUF ] ;
+Byt_t  garbage[sz_INBUF] = { 0 } ;
+Byt_t  input_buffer[ sz_FILES * sz_INBUF ] = { 0 } ;
 Byt_t *inbuf[] = {
 	(Byt_t *) (input_buffer + (0 * sz_INBUF)),
 #ifdef HOSTED
@@ -216,14 +216,13 @@ Byt_t *inbuf[] = {
 	NULL
 } ;
 
-Byt_t  scratch_buffer[sz_INBUF] ;
+Byt_t  scratch_buffer[sz_INBUF] = { 0 } ;
 Str_t  scratch = (Str_t) StartOf( scratch_buffer ) ;
 
-Byt_t  err_buffer[sz_INBUF] ;
-Byt_t  tmp_buffer[sz_INBUF] ;
+Byt_t  err_buffer[sz_INBUF] = { 0 } ;
+Byt_t  tmp_buffer[sz_INBUF] = { 0 } ;
 // Str_t  tmp  = (Str_t) StartOf( tmp_buffer ) ;
 uCell_t _ops = 0 ; 
-Byt_t	Locale[sz_STACK];
 
 #ifdef HOSTED
 Str_t	off_path = (Str_t) NULL ;
@@ -443,7 +442,6 @@ void version();
 void code();
 void data();
 void align();
-void flash_init();
 void fill();
 
 /*
@@ -663,13 +661,14 @@ Dict_t Primitives[] = {
 Dict_t Colon_Defs[sz_ColonDefs] ;
 Cell_t n_ColonDefs = 0 ;
 
-Cell_t flash[sz_FLASH] ;
+Cell_t flash[sz_FLASH] = { 0xdeadbeef } ;
 Cell_t *flash_mem = StartOf( flash ) ;
 
 // Some global state variables (see forget();)
 Cell_t *Here ;
 Cell_t *DictPtr ;
-Byt_t  *String_Data ;
+Byt_t  *String_Data = NULL ;
+Byt_t  *String_LowWater = NULL ;
 Cell_t  Base = 10 ;
 Cell_t  Trace = 0 ;
 
@@ -793,6 +792,7 @@ Wrd_t str_ntoa( Str_t dst, Wrd_t dlen, Cell_t val, Wrd_t radix, Wrd_t isSigned )
 Str_t str_token( Input_t *inptr );
 Str_t str_delimited( Str_t term ) ;
 Str_t str_cache( Str_t tag );
+Str_t str_seal( void );
 Str_t str_uncache( Str_t tag );
 Wrd_t ch_matches( Byt_t ch, Str_t anyOf );
 Byt_t ch_tolower( Byt_t b );
@@ -860,6 +860,7 @@ void chk_args( int argc, char **argv )
 
 #endif
 
+Str_t  Locale = (Str_t) NULL ;
 Byt_t  found_eol = (Byt_t) 0 ;
 
 // reset never forgets ...
@@ -880,10 +881,13 @@ void q_reset(){
 
   decimal() ;
   promptVal = 0 ; 
+
   tos = (Cell_t *) StartOf( stack ) ; 
   *tos = 0xdeadbeef ;
+
   rtos = (Cell_t *) StartOf( rstack ) ;
   *rtos = 0xdeadbeef ;
+
   error_code = err_OK ;
   state = state_Interactive ;
 
@@ -961,13 +965,12 @@ int main( int argc, char **argv ){
 
   forget() ; // puts the system in a known state ...
   q_reset() ;
-  push( 0 ) ; 
-  infile() ;
+  push( "stdin" ) ; 
+  infile() ; 
 
 #ifdef HOSTED
-  flash_init() ;
-  str_copy( (Str_t) Locale, setlocale( LC_ALL, "" ), sz_STACK ) ;
-  off_path = getenv( OFF_PATH ) ;
+  Locale = str_cache( (Str_t) setlocale( LC_ALL, "" ) ) ;
+  off_path = str_cache( getenv( OFF_PATH ) ) ;
   chk_args( argc, argv ) ;
   if( !isNul( in_File ) )
   {
@@ -976,16 +979,16 @@ int main( int argc, char **argv ){
   } 
   if( !isNul( in_Word ) )
   {
-
       quiet++ ; 
       do_x_Once = 0 ; 
       push( (Cell_t) lookup( in_Word ) ) ;
       execute() ;
   }
 #else
-  str_copy( (Str_t) Locale, "EMBEDDED", 9 ) ;
+  Locale = str_cache( "EMBEDDED" ) ;
 #endif
 
+  str_seal() ;
   banner() ;
   quit() ;
   return 0 ;
@@ -1350,16 +1353,22 @@ Str_t str_uncache( Str_t tag ){
   return (Str_t) String_Data ;
 }
 
-Str_t str_cache( Str_t tag ){
+Str_t str_cache( Str_t s ){
+
   Cell_t len ;
 
-  if( isNul( tag ) ){
-    return NULL ;
+  if( !isNul( s ) )
+  {
+    len = str_length( s ) + 1;
+    String_Data -= len ;
+    str_copy( (Str_t) String_Data, s, len ) ;
   }
+  return (Str_t) String_Data ;
+}
 
-  len = str_length( tag ) + 1;
-  String_Data -= len ;
-  str_copy( (Str_t) String_Data, tag, len ) ;
+Str_t str_seal( void )
+{
+  String_LowWater = String_Data ;
   return (Str_t) String_Data ;
 }
 
@@ -2019,9 +2028,9 @@ void catch(){
 #endif
 
  reset:
+  dump() ;
   put_str( "-- Last input: ") ; 
   put_str( input->bytes ) ; cr() ;
-  dump() ;
   q_reset() ;
   sz = fmt( "-- Remaining input flushed.\n" ) ;
   outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
@@ -2401,7 +2410,7 @@ void stringptr()
 
 void flashsize()
 {
-  push( (Cell_t) sz_FLASH ) ;
+  push( (Cell_t) sz_FLASH * sizeof( Wrd_t ) ) ;
 }
 
 void flashptr()
@@ -3011,24 +3020,23 @@ void closetty(){
 
 void infile()
 {
-  Cell_t UNUSED( dummy );
   chk( 1 ) ;
 
-  if( in_This < 0 ) // intialize ...
+  Str_t fn = (Str_t) pop() ;
+
+  if( isMatch( fn, "stdin" ) ) // intialize ...
   {
-    dummy = pop() ;
 	in_This = 0 ;
 	InputStack[ in_This ].file = 0 ; 
 	InputStack[ in_This ].bytes_read = -1 ; 
 	InputStack[ in_This ].bytes_this = -1 ; 
 	InputStack[ in_This ].in_line = 0 ; 
-	InputStack[ in_This ].name = str_cache( "tty" ) ;
+	InputStack[ in_This ].name = str_cache( fn ) ;
 	InputStack[ in_This ].bytes = (Str_t) inbuf[ in_This ] ; 
 	return ;
   }
 
 #ifdef HOSTED
-  Str_t fn = (Str_t) pop() ;
 
   if( in_This < sz_FILES ) // push a new input file ...
   {
@@ -3137,9 +3145,11 @@ Wrd_t outp( Wrd_t fd, Str_t buf, Wrd_t len ){
 }
 
 Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
+
 #ifdef HOSTED
   return read( fd, buf, len ) ;
 #endif
+
 #ifdef NATIVE
   Cell_t c, x, i = 0 ;
   
@@ -3415,10 +3425,14 @@ void forget()
 {
   Here = (Cell_t *) StartOf( flash ) ;				// erase colon defs vars and constants ...
   DictPtr = (Cell_t *) StartOf( flash ) ;			// set the dictptr to here ...
-  String_Data = (Byt_t *) (&flash[sz_FLASH] - 1) ;	// erase the string data referenced in the dictionary
   n_ColonDefs = 0 ; 								// uncount the colon defs ... 
   Base = 10 ;
   Trace = 0 ;
+
+  if( isNul( String_LowWater ) )
+	String_Data = (Byt_t *) (&flash[sz_FLASH - 1]) ;	// erase the string data referenced in the dictionary
+  else
+  	String_Data = (Byt_t *) String_LowWater ;
 }
 
 int sign_is_negative = 0 ; 
@@ -3525,8 +3539,7 @@ void dump()
   Cell_t  **p ;
   Dict_t *dp ;
 
-#define INPUT			InputStack[ in_This ].file
-  outp( OUTPUT, (Str_t) tmp_buffer, str_format( (Str_t) tmp_buffer, sz_INBUF, "-- File: %s Line: %d:\n", 
+  outp( OUTPUT, (Str_t) tmp_buffer, str_format( (Str_t) tmp_buffer, sz_INBUF, "-- Input File: %s Line: %d:\n", 
 	InputStack[ in_This ].name, InputStack[ in_This ].in_line ) ) ;
   outp( OUTPUT, (Str_t) tmp_buffer, str_format( (Str_t) tmp_buffer, sz_INBUF, "-- Forth Backtrace:\n" ) ) ;
   while( rtos != StartOf( rstack ) )
@@ -3588,15 +3601,6 @@ void align() // ( adr -- adr' )
       adr++;
 	}
 	*tos = adr ;
-}
-
-void flash_init() // ( -- ) 
-{
-  Cell_t i ;
-  for( i = 0 ; i < sz_FLASH ; i++ )
-  {
-    flash[i] = 0xdeadbeef ;
-  }
 }
 
 void fill() // ( dst n char -- )
