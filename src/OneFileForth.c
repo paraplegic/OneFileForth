@@ -2293,14 +2293,10 @@ void Buf(){
 }
 
 void pad(){
-  register Cell_t n ; 
-
   here() ;
   push( 20 ) ; 
   cells() ; 
   add() ; 
-  n = pop() ; 
-  push( n ) ;
 }
 
 void cmove(){  // ( n dst src -- )

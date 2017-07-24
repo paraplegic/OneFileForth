@@ -24,7 +24,10 @@ include $(OSTYPE).mk
 
 all:	$(OBJ)
 
-$(OUT)/off:	$(SRC)
+$(OUT):
+	mkdir -p $(OUT)
+
+$(OUT)/off:	$(OUT) $(SRC)
 	@echo "OSTYPE is $(OSTYPE)"
 	@echo "Building for $(OSTYPE)"
 	$(CC) $(CCOPT) -o $@ $(FAST) $(LDOPTS) $(SRC) 
