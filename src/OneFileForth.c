@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"55"
+#define REVISION	"56"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -1062,9 +1062,10 @@ Wrd_t ch_index( Str_t str, Byt_t c ){
 Str_t str_token( Input_t *input )
 {
   int tkn = 0 ;
+  Byt_t this_char ;
   static Byt_t acc[sz_INBUF] ;
-  found_eol = (Byt_t) 0 ; 
 
+  found_eol = (Byt_t) 0 ; 
   do {
 		if( input->bytes_read < 1 )
 		{
@@ -1086,27 +1087,31 @@ Str_t str_token( Input_t *input )
 			continue ;
 		}
 
+
 		// accumulate printing characters in the accumulater for the next token ...
-		if( !ch_matches( input->bytes[input->bytes_this++], WHITE_SPACE ) )
+		this_char = input->bytes[input->bytes_this++] ;
+
+		if( !ch_matches( this_char, WHITE_SPACE ) )
 		{
-			acc[tkn++] = input->bytes[input->bytes_this-1] ;
+			acc[tkn++] = this_char ;
 			acc[tkn] = (Byt_t) 0 ; 
 			continue ; 
 		}
 
-	  	// some words (errors and comments) would like to 
-		// know when we hit eol, so flag it in a global.
-		if( ch_matches( input->bytes[input->bytes_this-1], EOL ) )
+	  	// errors and comments require eol, so flag it in a global.
+		if( ch_matches( this_char, EOL ) )
 		{
 			input->in_line++ ;
-			found_eol = input->bytes[input->bytes_this-1] ;
+			found_eol = this_char ;
 		}
 
+		// have a token, return the accumulator ...
 		if( tkn > 0 )
 		{
 			return (Str_t) acc ;
 		}
 
+		// null tokens are simply ignored ... 
 		if( found_eol )
 		{
 			return (Str_t) NULL ;
