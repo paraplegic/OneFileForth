@@ -979,7 +979,7 @@ int main( int argc, char **argv ){
   } 
   if( !isNul( in_Word ) )
   {
-      quiet++ ; 
+      // quiet++ ; 
       do_x_Once = 0 ; 
       push( (Cell_t) lookup( in_Word ) ) ;
       execute() ;
@@ -1579,9 +1579,10 @@ void bye(){
 
 void words(){
   Dict_t *p ;
-  Cell_t i, llen ;
+  Cell_t i, llen, nwords ;
 
   llen = 0 ; 
+  nwords = 0 ; 
   if( n_ColonDefs > 0 )
   {
     p = StartOf( Colon_Defs ) ;
@@ -1594,6 +1595,7 @@ void words(){
 	  }
 	  llen += str_length( p ->nfa );
       put_str( p ->nfa ) ;
+	  nwords++ ;
     }
   }
 
@@ -1606,8 +1608,12 @@ void words(){
 	}
 	llen += str_length( p ->nfa );
     put_str( p ->nfa ) ; 
+	nwords++ ;
     p++ ;
   }
+  put_str( " -- " );
+  push( nwords ); dot(); 
+  put_str( "words." ); cr();
 }
 
 Wrd_t checkstack( Wrd_t n, Str_t fun ){
@@ -2039,8 +2045,11 @@ void catch(){
   sz = fmt( "-- Stack Dump: Depth = " ) ;
   outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
   dotS() ; cr() ;
-  sz = fmt( "-- Abnormal Termination.\n" ) ;
-  outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+  if( error_code != err_OK && error_code != err_NoInput )
+  {
+    sz = fmt( "-- Abnormal Termination.\n" ) ;
+    outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+  }
 #ifdef HOSTED
   exit( error_code ) ;
 #endif
