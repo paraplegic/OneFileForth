@@ -16,16 +16,24 @@
 		[sudo] password for rob: 
 		OSTYPE is Linux
 		Building for Linux
+
 		gcc -g -O2 -o ../bin/off -D NOCHECK -ldl  OneFileForth.c 
 		size ../bin/off
 		   text	   data	    bss	    dec	    hex	filename
 		  46618	 138104	  35384	 220106	  35bca	../bin/off
+
+		gcc -g -O2 -o ../bin/offorth -ldl  OneFileForth.c
+		size ../bin/offorth
+		   text	   data	    bss	    dec	    hex	filename
+		  49627	 138104	  35384	 223115	  3678b	../bin/offorth
+
 		cp ../bin/off ../bin/offorth /usr/local/bin
 		rob@debian9:~/mystuff/OneFileForth/src$ off
 		-- OneFileForth-Hosted alpha Version: 00.01.56F (en_US.UTF-8)
 		-- www.ControlQ.com
 		
 		ok bye
+
 		rob@debian9:~/mystuff/OneFileForth/src$ offorth
 		-- OneFileForth-Hosted alpha Version: 00.01.56D (en_US.UTF-8)
 		-- www.ControlQ.com
