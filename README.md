@@ -12,12 +12,34 @@
 	This project should make out of the box on most HOSTED systems, and particularly
 	on Linux and/or BSD:
 
-		make test
-		./off
-
-		-- OneFileForth-Hosted alpha Version: 00.01.48F
+		sudo make install
+		[sudo] password for rob: 
+		OSTYPE is Linux
+		Building for Linux
+		gcc -g -O2 -o ../bin/off -D NOCHECK -ldl  OneFileForth.c 
+		size ../bin/off
+		   text	   data	    bss	    dec	    hex	filename
+		  46618	 138104	  35384	 220106	  35bca	../bin/off
+		cp ../bin/off ../bin/offorth /usr/local/bin
+		rob@debian9:~/mystuff/OneFileForth/src$ off
+		-- OneFileForth-Hosted alpha Version: 00.01.56F (en_US.UTF-8)
 		-- www.ControlQ.com
-		ok 
+		
+		ok bye
+		rob@debian9:~/mystuff/OneFileForth/src$ offorth
+		-- OneFileForth-Hosted alpha Version: 00.01.56D (en_US.UTF-8)
+		-- www.ControlQ.com
+		
+		ok bye
+
+### TESTING:
+	
+	Testing on native platforms is accomplished simply:
+		
+		make test
+
+	Check stdout and the logs for error messages.
+
 
 ### NATIVE:
 
@@ -30,14 +52,23 @@
 
 		make qemu
 
-		qemu-system-arm -M versatilepb -m 1024M -nographic -kernel OneFileForth.bin 
+		arm-linux-gnueabi-as --warn --fatal-warnings -march=armv5t qemu_versatile_start.s -o qemu_versatile_start.o
+		arm-linux-gnueabi-gcc -c -Wall -O2 -nostdlib -nostartfiles -ffreestanding -march=armv5t -DNATIVE=native -D NOCHECK ../../../src/OneFileForth.c -o OneFileForth.o
+		## arm-linux-gnueabi-gcc -c -Wall -O2 -nostdlib -nostartfiles -ffreestanding -march=armv5t -DNATIVE=native ../../../src/OneFileForth.c -o OneFileForth.o
+		arm-linux-gnueabi-gcc qemu_versatile_start.o OneFileForth.o -nostartfiles -L /usr/arm-linux-gnueabi/lib -T memmap -o OneFileForth.elf -Wl,--build-id=none
+		arm-linux-gnueabi-objdump -D OneFileForth.elf > OneFileForth.list
+		arm-linux-gnueabi-objcopy OneFileForth.elf -O binary ../../../bin/OneFileForth-native-arm.bin
+		qemu-system-arm -M versatilepb -m 256M -nographic -kernel ../../../bin/OneFileForth-native-arm.bin 
 		pulseaudio: set_sink_input_volume() failed
 		pulseaudio: Reason: Invalid argument
 		pulseaudio: set_sink_input_mute() failed
 		pulseaudio: Reason: Invalid argument
-		-- OneFileForth-Native alpha Version: 00.01.31F
+		-- OneFileForth-Native alpha Version: 00.01.56F (EMBEDDED)
 		-- www.ControlQ.com
-		ok
+
+		ok words
+		quit banner + - * ^ / % abs .s . u. bye words rdepth depth dup ?dup rot nip tuck drop over swap pick >r r> <eof> cells cellsize @ ! r@ r! cr@ cr! h@ h! c@ c! << >> cmove word ascii ?key key emit type cr dp strings flashsize flash here freespace , (literal) : ; execute call (colon) ' >name >code >body decimal hex base trace sigval errvar errval errstr warm cold see (variable) allot create lambda does> constant variable normal immediate [ ] unresolved >mark >resolve <mark <resolve ?branch branch begin again while repeat until leave if else then < > >= <= == != & and or xor not buf scratch pad ( \ .( " ." count save unsave infile filename outfile closeout native clks ++ -- utime ops noops do (do) i loop (loop) +loop (+loop) forget <# # #s hold sign #> utf8 accept find version code data align fill ok 
+
 
 	To exit the QEMU emulator, hit a cntrl-A followed by an x to exit.
 
@@ -57,8 +88,9 @@
 ### Tested
 
 ####	Hosted:
-	  FreeBSD 10.2
-	  Debian  Jesse
+	  PC-BSD/TrueOS 
+	  FreeBSD 10.x, 11.x
+	  Debian  Jesse, Stretch
 	  RaspberyPi Zero W running Raspbian Jesse
 	  OSX  10.x
 
