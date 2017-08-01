@@ -67,7 +67,15 @@
 		-- www.ControlQ.com
 
 		ok words
-		quit banner + - * ^ / % abs .s . u. bye words rdepth depth dup ?dup rot nip tuck drop over swap pick >r r> <eof> cells cellsize @ ! r@ r! cr@ cr! h@ h! c@ c! << >> cmove word ascii ?key key emit type cr dp strings flashsize flash here freespace , (literal) : ; execute call (colon) ' >name >code >body decimal hex base trace sigval errvar errval errstr warm cold see (variable) allot create lambda does> constant variable normal immediate [ ] unresolved >mark >resolve <mark <resolve ?branch branch begin again while repeat until leave if else then < > >= <= == != & and or xor not buf scratch pad ( \ .( " ." count save unsave infile filename outfile closeout native clks ++ -- utime ops noops do (do) i loop (loop) +loop (+loop) forget <# # #s hold sign #> utf8 accept find version code data align fill ok 
+		quit banner + - * ^ / % abs .s . u. bye words rdepth depth dup ?dup rot nip tuck drop over 
+		swap pick >r r> <eof> cells cellsize @ ! r@ r! cr@ cr! h@ h! c@ c! << >> cmove word ascii 
+		?key key emit type cr dp strings flashsize flash here freespace , (literal) : ; execute call 
+		(colon) ' >name >code >body decimal hex base trace sigval errvar errval errstr warm cold see 
+		(variable) allot create lambda does> constant variable normal immediate [ ] unresolved >mark 
+		>resolve <mark <resolve ?branch branch begin again while repeat until leave if else then < > 
+		>= <= == != & and or xor not buf scratch pad ( \ .( " ." count save unsave infile filename 
+		outfile closeout native clks ++ -- utime ops noops do (do) i loop (loop) +loop (+loop) 
+		forget <# # #s hold sign #> utf8 accept find version code data align fill ok 
 
 
 	To exit the QEMU emulator, hit a cntrl-A followed by an x to exit.
