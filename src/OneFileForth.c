@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"56"
+#define REVISION	"57"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -1579,19 +1579,32 @@ void bye(){
 
 void words(){
   Dict_t *p ;
-  Cell_t i ;
- 
+  Cell_t i, llen ;
+
+  llen = 0 ; 
   if( n_ColonDefs > 0 )
   {
     p = StartOf( Colon_Defs ) ;
     for( i = n_ColonDefs - 1 ; i > -1 ; i-- ){
       p = &Colon_Defs[i] ;
+	  if( llen + str_length( p ->nfa ) > 79 )
+	  {
+		put_str( "\n" );
+		llen = 0 ;
+	  }
+	  llen += str_length( p ->nfa );
       put_str( p ->nfa ) ;
     }
   }
 
   p = StartOf( Primitives ) ;
   while( p ->nfa ){
+	if( llen + str_length( p ->nfa ) > 79 )
+	{
+		put_str( "\n" );
+		llen = 0 ;
+	}
+	llen += str_length( p ->nfa );
     put_str( p ->nfa ) ; 
     p++ ;
   }
