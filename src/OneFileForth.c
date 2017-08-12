@@ -3079,7 +3079,7 @@ void infile()
 			if( !isNul( off_path ) ) // add the file path and try again ...
 			{
 				str_format( (Str_t) tmp_buffer, sz_INBUF, "%s/%s", (Str_t) off_path, (Str_t) fn ) ;
-    			InputStack[ in_This ].name = str_cache( tmp_buffer ) ;
+    				InputStack[ in_This ].name = str_cache( (Str_t) tmp_buffer ) ;
 				InputStack[ in_This ].file = open( InputStack[ in_This ].name , O_RDONLY ) ;
 			} 
 		}
