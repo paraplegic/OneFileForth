@@ -1611,7 +1611,7 @@ void words(){
 	nwords++ ;
     p++ ;
   }
-  put_str( " -- " );
+  put_str( "\n -- " );
   push( nwords ); dot(); 
   put_str( "words." ); cr();
 }
