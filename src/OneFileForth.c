@@ -86,6 +86,9 @@
 #if defined (avr) || defined (AVR)
 #include <stdint.h>
 #define _WORDSIZE 	2
+#ifndef NULL
+#define NULL 0
+#endif
 #endif
 
 #if defined (i386) || defined (__arm__) || defined (AVR32) || defined(powerpc)
