@@ -1,1 +1,13 @@
 : showkeys begin key dup ascii x == if . ." Exit" cr leave then . begin ?key while key . repeat again ;
+
+: key. key dup emit ;
+
+: gets ( n -- ptr )
+	here >r
+	begin
+		dup 0 > while
+			key. r> dup ++ >r c! --
+	repeat
+	r> c! here
+;
+
