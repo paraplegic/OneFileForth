@@ -1325,7 +1325,6 @@ Wrd_t str_ntoa( Str_t dst, Wrd_t dlen, Cell_t val, Wrd_t radix, Wrd_t isSigned )
 } 
 
 Wrd_t str_format( Str_t dst, Wrd_t dlen, Str_t fmt, ... ){
-
   Wrd_t rv ;
   va_list ap ;
 
@@ -1423,31 +1422,29 @@ Dict_t *lookup( Str_t tkn ){
 
   if( !isNul( tkn ) )
   {
-
-	if( n_ColonDefs > 0 )
-	{
-		for( i = n_ColonDefs - 1 ; i > -1 ; i-- )
-		{
-			p = &Colon_Defs[ i ] ;
-			if( isMatch( tkn, p ->nfa ) )
-			{
-				return p ;
-			}
-		}
+    if( n_ColonDefs > 0 )
+    {
+      for( i = n_ColonDefs - 1 ; i > -1 ; i-- )
+      {
+        p = &Colon_Defs[ i ] ;
+        if( isMatch( tkn, p ->nfa ) )
+        {
+          return p ;
+        }
+      }
     }
 
-	p = StartOf( Primitives ) ;
-	while( p ->nfa )
-	{
-		if( isMatch( tkn, p ->nfa ) )
-		{
-			return p ;
-		}
-		p++ ;
-	}
+    p = StartOf( Primitives ) ;
+    while( p ->nfa )
+    {
+       if( isMatch( tkn, p ->nfa ) )
+       {
+         return p ;
+       }
+       p++ ;
+    }
 
   }
-
   return (Dict_t *) NULL ;
 
 }
