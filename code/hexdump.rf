@@ -5,15 +5,15 @@
 
 .( ::: loading hexdump library ) cr
 
-: space  ( -- )   32 emit ;
+: space  ( -- )   ascii | emit ;
 : spaces ( n -- ) 0 do space loop ;
-: hex.   ( n -- ) hex <# 4 0 do # loop ascii _ hold 4 0 do # loop ascii x hold ascii 0 hold #> type decimal ;
+: .hex   ( n -- ) base @ >r hex <# cellsize 0 do # loop ascii _ hold cellsize 0 do # loop ascii x hold ascii 0 hold #> type r> base ! ;
+: isPrintable ( n -- n flg ) dup 31 > over 127 < and ;
 : hexdump ( adr nrows -- )
-	swap align swap
 	0 do
-		dup hex. ascii : emit space
-		4 0 do dup i cells + @ hex. space loop
-		4 cellsize * 0 do dup i + c@ dup 31 > over 127 < and if emit else drop ascii . emit then loop
+		dup .hex ascii : emit space
+		4 0 do dup i cells + @ .hex space loop 3 spaces
+		4 cellsize * 0 do dup i + c@ isPrintable if emit else drop ascii . emit then loop
 		4 cells +
 		cr
 	loop

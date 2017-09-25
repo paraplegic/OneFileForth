@@ -223,12 +223,12 @@ Byt_t *inbuf[] = {
 // temp buffer circular queue ... see implementation
 // below for details ... 
 typedef struct _cque_ {
-  Str_t          cq_memory ;
-  uint16_t       cq_memsize ;
-  uint16_t       cq_n_elements ;
-  uint16_t       cq_chunksize ;
-  uint16_t       cq_next ;
-  Str_t          cq_buffer ;
+  Str_t  cq_memory ;
+  Wrd_t  cq_memsize ;
+  Wrd_t  cq_n_elements ;
+  Wrd_t  cq_chunksize ;
+  Wrd_t  cq_next ;
+  Str_t  cq_buffer ;
 } Cir_Queue_t ;
 
 #define CQ_MAX_BUFFER 65535
@@ -240,12 +240,13 @@ typedef struct _cque_ {
    -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 */
 
-Cir_Queue_t     *tb_create( Byt_t *memory, unsigned size, unsigned n_elements ) ;
+Cir_Queue_t     *tb_create( Cir_Queue_t *Q, Byt_t *chunk, Wrd_t size, Wrd_t n_elements ) ;
 Cir_Queue_t     *tb_destroy( Cir_Queue_t *CQ ) ;
 int              tb_bufsize( Cir_Queue_t *CQ ) ;
 void            *tb_get( Cir_Queue_t *CQ ) ;
 
 
+Cir_Queue_t T ;
 Cir_Queue_t *TB = (Cir_Queue_t *) NULL ;
 Byt_t  tmp_buffer[sz_TMPBUFFER] = { 0 } ;
 
@@ -273,7 +274,7 @@ Str_t	off_path = (Str_t) NULL ;
 #define MaxStr( x, y )	((str_length( x ) > str_length( y )) ? str_length( x ) : str_length( y ))
 #define isMatch( x, y )	(str_match( (char *) x, (char *) y, MaxStr( (char *) x, (char *) y )))
 #define __THIS__        ( (Str_t) __FUNCTION__ )
-#define throw( x )	err_throw( str_error( (char *) tb_get( TB ), tb_bufsize( TB ), __THIS__, __LINE__), x )
+#define throw( x )	err_throw( __THIS__, __LINE__, x )
 #define Abs( x )	((x < 0) ? (x*-1) : x) 
 #define UNUSED( x )	x __attribute__((unused))
 
@@ -802,12 +803,11 @@ Err_t error_code = 0 ;
 */
 
 void catch() ;
-void err_throw( Str_t w, Err_t e ) ;
+void err_throw( Str_t f, Wrd_t l, Err_t e ) ;
 Wrd_t put_str( Str_t s );
 Wrd_t get_str( Wrd_t fd, Str_t buf, Wrd_t len );
 Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len );
 Wrd_t outp( Wrd_t fd, Str_t buf, Wrd_t len );
-Str_t str_error( Str_t buf, Wrd_t len, Str_t fn, Wrd_t lin );
 Wrd_t str_match( Str_t a, Str_t b, Wrd_t len );
 Wrd_t str_length( Str_t str );
 Wrd_t str_literal( Str_t tkn, Wrd_t radix );
@@ -905,6 +905,7 @@ void q_reset(){
   signal( SIGHUP, sig_hdlr ) ;
   signal( SIGKILL, sig_hdlr ) ;
   signal( SIGBUS, sig_hdlr ) ;
+  signal( SIGFPE, sig_hdlr ) ;
   signal( SIGSEGV, sig_hdlr ) ;
 #endif
 #endif
@@ -1150,11 +1151,6 @@ Str_t str_token( Input_t *input )
   } while( 1 ) ;
 }
 
-Str_t str_error( Str_t buf, Wrd_t len, Str_t fn, Wrd_t lin ){
-  str_format( buf, len, "%s():[%d]", fn, lin ) ;
-  return buf ; 
-}
-
 Wrd_t str_match( Str_t a, Str_t b, Wrd_t len ){
   int8_t i ;
 
@@ -1338,7 +1334,7 @@ Wrd_t str_format_ap( Str_t dst, Wrd_t dlen, Str_t fmt, va_list ap ){
   va_list ap2 ;
   Str_t p_fmt, p_dst, p_end, str ;
   Byt_t ch ;
-  Wrd_t cell ;
+  Wrd_t cell, rv ;
 
   p_end = dst + dlen ;
   p_dst = dst ;
@@ -1385,7 +1381,10 @@ Wrd_t str_format_ap( Str_t dst, Wrd_t dlen, Str_t fmt, va_list ap ){
       *p_dst++ = ch ;
     }
   }
-  *p_dst++ = (Byt_t) 0 ;
+  if( !isNul( p_dst ) && p_dst < p_end )
+  {
+    *p_dst++ = (Byt_t) 0 ;
+  }
   return p_dst - dst - 1 ;
 }
 
@@ -1588,11 +1587,12 @@ void dotS(){
 }
 
 void dot(){
-  Wrd_t n ;
+  Wrd_t n, val ;
   Str_t buf = tb_get( TB );
 
   chk( 1 ) ;
-  n = str_format( buf, tb_bufsize( TB ), "%d ", pop() ) ;
+  val = pop() ;
+  n = str_format( buf, tb_bufsize( TB ), "%d ", val ) ;
   outp( OUTPUT, buf, n ) ;
 }
 
@@ -2002,8 +2002,11 @@ void cellsize(){
   push( sizeof( Cell_t ) ) ;
 }
 
-void err_throw( Str_t whence, Err_t err ){
-  error_loc = whence ;
+void err_throw( Str_t whence, Wrd_t line, Err_t err ){
+  Str_t buf = tb_get( TB ) ;
+
+  str_format( buf, tb_bufsize( TB ), "%s():[%d]", whence, line ) ;
+  error_loc = buf ;
   error_code = err ;
 }
 
@@ -2203,8 +2206,8 @@ void byt_fetch(){
 }
 
 void byt_store(){
-  volatile register Byt_t *p ; 
-  register Cell_t n ;
+  Byt_t *p ; 
+  Cell_t n ;
 
   chk( 2 ) ; 
   p = (Byt_t *) pop() ;
@@ -2252,7 +2255,6 @@ void dotquote(){
     comma() ; 
     return ;
   }
-
   type() ;
 }
 
@@ -2418,10 +2420,12 @@ void key(){
 }
 
 void emit(){
+  Wrd_t nbytes ;
+  Byt_t buf[10] ;
   chk( 1 ) ; 
-
-  Str_t buf = tb_get( TB ); 
-  outp( OUTPUT, (Str_t) buf, utf8_encoder( pop(), (Str_t) buf, (Wrd_t) tb_bufsize( TB ) ) ) ;
+ 
+  nbytes = utf8_encoder( pop(), (Str_t) buf, (Wrd_t) 10 ) ;
+  outp( OUTPUT, (Str_t) buf, nbytes ) ;
 }
 
 void type(){
@@ -3474,7 +3478,7 @@ void forget()
   {
     TB = tb_destroy( TB ) ;
   }
-  TB = tb_create( tmp_buffer, sz_TMPBUFFER, nm_TMPBUFFER ) ;
+  TB = tb_create( &T, (Byt_t *) tmp_buffer, (Wrd_t) sz_TMPBUFFER, (Wrd_t) nm_TMPBUFFER ) ;
 
   Here = (Cell_t *) StartOf( flash ) ;		// erase colon defs vars and constants ...
   DictPtr = (Cell_t *) StartOf( flash ) ;	// set the dictptr to here ...
@@ -3494,33 +3498,37 @@ int sign_is_negative = 0 ;
 void fmt_start() 	// ( n -- <ptr> n )
 {
   sign_is_negative = 0 ;
-  Buf() ;
-  add() ; 	// this buffer fills backwards 
-  swap() ;
-  fmt_sign() ;
+  Buf() ;				// ( n -- n ptr len )
+  add() ; 				// ( n ptr len -- n ptr+len ) this buffer fills backwards 
+  if( *tos )
+  {
+    push( 0 ) ;			// drop a null byte at the end of the buffer ...
+    over() ;
+    byt_store() ;
+  }
+  *tos -= 1 ;			// leave room for a null ...
+  swap() ;				// ( n ptr -- ptr n )
 }
 
 void fmt_digit()	// ( <ptr> n -- <ptr-1> n2 ) : # dup base @ % . base @ / ;
 {
   register Cell_t n, digit ;
   Str_t digits = "0123456789abcdefghijklmnopqrstuvwxyz" ;
+  Str_t ptr ;
 
   if( *tos )
   {
     fmt_sign() ;
-    n = pop() ;
-    digit = ( (Abs( n ) % Base) + '0' ) & 0xff ;
+    n = pop() ;						//	( ptr n -- ptr )
+    ptr = (Str_t) pop() ;			//  ( ptr -- )
     digit = ( (Abs( n ) % Base) ) ;
     n /= Base ;
-    dupe() ;
-    push( digits[digit] ) ;
-    swap() ;
-    byt_store() ;
-    (*tos) -= 1 ;
-    push( n ) ;
+    *(ptr--) = digits[digit] ;
+    push( ptr ) ;					// ( ptr -- ptr-1 )
+    push( n ) ;						// ( ptr -- ptr n2 )
   } else {
-    push( (Cell_t) '0' ) ;
-    fmt_hold() ;
+    push( (Cell_t) '0' ) ;			// ( ptr n -- ptr n 0 )
+    fmt_hold() ;					// ( ptr n 0 -- ptr-1 n )
   }
 }
 
@@ -3529,9 +3537,9 @@ void fmt_hold() // ( <ptr> x n -- <ptr-1> x )
   Cell_t n ;
   Str_t ptr ;
 
-  n = pop() ;
-  ptr = (Str_t) nos ;
-  *ptr = Abs( n ) & 0xff ;
+  n = pop() ;						// ( ptr x n -- ptr x )
+  ptr = (Str_t) nos ;				// ( ptr x -- ptr x )
+  *ptr = (Byt_t) n ;				// ( ptr x -- ptr-1 x )
   nos = (Cell_t) --ptr ;
 }
 
@@ -3548,7 +3556,7 @@ void fmt_num() // ( <ptr> n -- <ptr*> 0 )
   while( *tos ) fmt_digit() ;
 }
 
-void fmt_end() // ( <ptr> n -- <ptr+1> ) 
+void fmt_end() // ( <ptr> n -- <ptr> ) 
 {
   if( sign_is_negative )
   {
@@ -3668,10 +3676,9 @@ void fill() // ( dst n char -- )
 // return a reasonably sized buffer chunk from a fixed memory location in
 // a round robin fashion, such that internal memory requirements will not
 // conflict ... this is an internal only implementation ... see Buf().
-Cir_Queue_t     *tb_create( Byt_t *memory, unsigned size, unsigned n_elements )
+Cir_Queue_t     *tb_create( Cir_Queue_t *rv, Byt_t *memory, Wrd_t size, Wrd_t n_elements )
 {
-  Cir_Queue_t *rv = NULL ;
-  unsigned chunksz = 0 ;
+  Wrd_t chunksz = 0 ;
 
   if( size > CQ_MAX_BUFFER )
   {
@@ -3683,17 +3690,15 @@ Cir_Queue_t     *tb_create( Byt_t *memory, unsigned size, unsigned n_elements )
     return (Cir_Queue_t *) rv ;
   }
 
-  chunksz = (size - sizeof( Cir_Queue_t )) / n_elements ;
+  chunksz = (size / n_elements ) ;
 
-  rv = (Cir_Queue_t *) memory ;
   str_set( (Str_t) memory, 0, size ) ;
   rv -> cq_memory = (Str_t) memory ;
   rv -> cq_memsize = size ;
   rv -> cq_chunksize = (uint16_t) chunksz ;
   rv -> cq_n_elements = n_elements ;
   rv -> cq_next = 0 ;
-  rv -> cq_buffer = (Str_t) ( memory + sizeof( Cir_Queue_t ) ) ;
-
+  rv -> cq_buffer = (Str_t) memory ;
   return rv ;
 }
 
@@ -3701,7 +3706,8 @@ Cir_Queue_t *tb_destroy( Cir_Queue_t *CQ )
 {
   if( !isNul( CQ ) )
   {
-    str_set( (Str_t) CQ->cq_memory, 0, CQ->cq_memsize ) ;
+	CQ ->cq_next = 0 ; 
+    str_set( (Str_t) CQ ->cq_memory, 0, CQ ->cq_memsize ) ;
   }
   return (Cir_Queue_t *) NULL ;
 }
@@ -3722,10 +3728,10 @@ void    *tb_get( Cir_Queue_t *CQ )
 
   if( !isNul( CQ ) )
   {
-    ix = CQ->cq_next++ % CQ->cq_n_elements ;
+    ix = CQ->cq_next++ ;
     CQ->cq_next = ( CQ->cq_next < CQ->cq_n_elements ) ? CQ->cq_next : 0 ;
     rv = (void *) ( CQ->cq_buffer + ( ix * CQ->cq_chunksize ) ) ;
-    str_set( rv, 0, tb_bufsize( CQ ) ) ;
+    str_set( rv, 0, CQ->cq_chunksize  ) ;
   }
   return rv ;
 }
