@@ -3249,7 +3249,6 @@ void qdlerror(){
   push( (Cell_t) dlerror() ) ;
 }
 
-
 void last_will(){
   Opq_t cmd ;
 
