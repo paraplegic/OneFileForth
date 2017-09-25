@@ -804,7 +804,7 @@ Err_t error_code = 0 ;
 void catch() ;
 void err_throw( Str_t w, Err_t e ) ;
 Wrd_t put_str( Str_t s );
-Wrd_t getstr( Wrd_t fd, Str_t buf, Wrd_t len );
+Wrd_t get_str( Wrd_t fd, Str_t buf, Wrd_t len );
 Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len );
 Wrd_t outp( Wrd_t fd, Str_t buf, Wrd_t len );
 Str_t str_error( Str_t buf, Wrd_t len, Str_t fn, Wrd_t lin );
@@ -2910,7 +2910,34 @@ Wrd_t put_str( Str_t s ){
     outp( OUTPUT, " ", 1 ) ;
   }
   return n ;
+}
 
+Wrd_t get_str( Wrd_t fd, Str_t buf, Wrd_t len ){
+  Byt_t ch ;
+  Wrd_t i, crlf = 0 ;
+
+  str_set( buf, 0, len ) ;
+
+  i = 0 ; 
+  do {
+    if( i > (len - 1) ){
+      return i ;
+    }
+
+	key() ; ch = pop() & 0xff ;
+    if( ch == 0 )
+    {
+      return i ;
+    }
+
+    if( ch_matches( ch, "\r\n" ) ){ 
+       crlf++ ;
+    }
+
+    buf[i++] = (Byt_t) ch ;
+
+  } while( crlf < 1 ) ;
+  return i ;
 }
 
 Wrd_t io_cbreak( int fd ){
@@ -2980,34 +3007,6 @@ void sndtty(){ /* ( fd ptr -- nx ) */
   push( (Cell_t) outp( fd, str, len ) ) ;
 }
 
-Wrd_t getstr( Wrd_t fd, Str_t buf, Wrd_t len ){
-  Byt_t ch ;
-  Wrd_t i, crlf = 0 ;
-
-  str_set( buf, 0, len ) ;
-
-  i = 0 ; 
-  do {
-    if( i > (len - 1) ){
-      return i ;
-    }
-
-	key() ; ch = pop() & 0xff ;
-    if( ch == 0 )
-    {
-      return i ;
-    }
-
-    if( ch_matches( ch, "\r\n" ) ){ 
-       crlf++ ;
-    }
-
-    buf[i++] = (Byt_t) ch ;
-
-  } while( crlf < 1 ) ;
-  return i ;
-}
-
 #ifdef HOSTED
 void rcvtty(){	/* ( fd n -- buf n ) */
   Str_t buf ;
@@ -3019,7 +3018,7 @@ void rcvtty(){	/* ( fd n -- buf n ) */
   fd = pop() ;
   here() ; buf = (Str_t) pop() + 8 * sizeof( Cell_t ) ;
   in_files[++in_This] = fd ; 
-  nr = getstr( fd, buf, n ) ;
+  nr = get_str( fd, buf, n ) ;
   --in_This ;
   push( (Cell_t) buf ) ;
   push( (Cell_t) nr ) ;
@@ -3496,11 +3495,7 @@ void fmt_start() 	// ( n -- <ptr> n )
 {
   sign_is_negative = 0 ;
   Buf() ;
-  push( 0 ) ; 
-  fill() ;	// clear out the tmp buffer ...
-  Buf() ;
   add() ; 	// this buffer fills backwards 
-  minusminus() ;
   swap() ;
   fmt_sign() ;
 }
@@ -3585,7 +3580,7 @@ void accept() // ( buf len -- len )
   len = (Wrd_t) pop() ;
   buf = (Str_t) pop() ;
 
-  push( (Wrd_t) getstr( INPUT, buf, len ) ) ;
+  push( (Wrd_t) get_str( INPUT, buf, len ) ) ;
   
 }
 
