@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"57"
+#define REVISION	"60"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -86,6 +86,9 @@
 #if defined (avr) || defined (AVR)
 #include <stdint.h>
 #define _WORDSIZE 	2
+#ifndef NULL
+#define NULL 0
+#endif
 #endif
 
 #if defined (i386) || defined (__arm__) || defined (AVR32) || defined(powerpc)
@@ -103,10 +106,12 @@
 #undef HOSTED
 #endif
 
-#define sz_INBUF		127			// bytes
-#define sz_STACK		32			// cells
+#define sz_INBUF		127		// bytes
+#define sz_STACK		32		// cells
 #define sz_FLASH		16384		// cells
-#define sz_ColonDefs 	1024		// # entries
+#define sz_ColonDefs 		1024		// # entries
+#define sz_TMPBUFFER		2048		// total buffer queue
+#define nm_TMPBUFFER		8		// number of buffers
 
 
 #ifdef HOSTED
@@ -204,7 +209,6 @@ Cell_t ustack[sz_STACK+1] = { 0 } ;
 Cell_t *utos = (Cell_t *) StartOf( ustack ) ;
 
 //  -- some input and scratch buffers ...
-Byt_t  garbage[sz_INBUF] = { 0 } ;
 Byt_t  input_buffer[ sz_FILES * sz_INBUF ] = { 0 } ;
 Byt_t *inbuf[] = {
 	(Byt_t *) (input_buffer + (0 * sz_INBUF)),
@@ -216,12 +220,35 @@ Byt_t *inbuf[] = {
 	NULL
 } ;
 
-Byt_t  scratch_buffer[sz_INBUF] = { 0 } ;
-Str_t  scratch = (Str_t) StartOf( scratch_buffer ) ;
+// temp buffer circular queue ... see implementation
+// below for details ... 
+typedef struct _cque_ {
+  Str_t          cq_memory ;
+  uint16_t       cq_memsize ;
+  uint16_t       cq_n_elements ;
+  uint16_t       cq_chunksize ;
+  uint16_t       cq_next ;
+  Str_t          cq_buffer ;
+} Cir_Queue_t ;
 
-Byt_t  err_buffer[sz_INBUF] = { 0 } ;
-Byt_t  tmp_buffer[sz_INBUF] = { 0 } ;
-// Str_t  tmp  = (Str_t) StartOf( tmp_buffer ) ;
+#define CQ_MAX_BUFFER 65535
+#define CQ_MIN_CHUNKS 1
+
+/*
+   -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+   public interface ...
+   -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+*/
+
+Cir_Queue_t     *tb_create( Byt_t *memory, unsigned size, unsigned n_elements ) ;
+Cir_Queue_t     *tb_destroy( Cir_Queue_t *CQ ) ;
+int              tb_bufsize( Cir_Queue_t *CQ ) ;
+void            *tb_get( Cir_Queue_t *CQ ) ;
+
+
+Cir_Queue_t *TB = (Cir_Queue_t *) NULL ;
+Byt_t  tmp_buffer[sz_TMPBUFFER] = { 0 } ;
+
 uCell_t _ops = 0 ; 
 
 #ifdef HOSTED
@@ -233,7 +260,7 @@ Str_t	off_path = (Str_t) NULL ;
 #define v_On		1
 #define push( x )	*(++tos) = (Cell_t) x
 #define pop()		*(tos--)
-#define nos			 tos[-1]
+#define nos		 tos[-1]
 #define rpush( x )	*(++rtos) = x
 #define rpop()		*(rtos--)
 #define upush( x )	*(++utos) = x
@@ -245,12 +272,13 @@ Str_t	off_path = (Str_t) NULL ;
 #define inEOF		"<eof>"
 #define MaxStr( x, y )	((str_length( x ) > str_length( y )) ? str_length( x ) : str_length( y ))
 #define isMatch( x, y )	(str_match( (char *) x, (char *) y, MaxStr( (char *) x, (char *) y )))
-#define fmt( x, ... ) 	str_format( (Str_t) StartOf( tmp_buffer ), (Wrd_t) sz_INBUF, x, ## __VA_ARGS__ )
 #define __THIS__        ( (Str_t) __FUNCTION__ )
-#define throw( x )	err_throw( str_error( (char *) err_buffer, sz_INBUF, __THIS__, __LINE__), x )
+#define throw( x )	err_throw( str_error( (char *) tb_get( TB ), tb_bufsize( TB ), __THIS__, __LINE__), x )
 #define Abs( x )	((x < 0) ? (x*-1) : x) 
 #define UNUSED( x )	x __attribute__((unused))
 
+// nocheck determines argument checking at runtime, and also
+// will determine if temporary buffers are cleared 
 #ifdef NOCHECK
 #define chk( x )	{}
 #define dbg		'F'
@@ -383,7 +411,6 @@ void and();
 void or();
 void xor();
 void not();
-void SCratch();
 void Buf();
 void pad();
 void comment();
@@ -597,7 +624,7 @@ Dict_t Primitives[] = {
   { xor,	"xor", Normal, NULL },
   { not,	"not", Normal, NULL },
   { Buf,	"buf", Normal, NULL },
-  { SCratch,	"scratch", Normal, NULL },
+  { Buf,	"scratch", Normal, NULL },
   { pad,	"pad", Normal, NULL },
   { comment,	"(", Immediate, NULL },
   { flushtoeol,	"\\", Immediate, NULL },
@@ -777,7 +804,7 @@ Err_t error_code = 0 ;
 void catch() ;
 void err_throw( Str_t w, Err_t e ) ;
 Wrd_t put_str( Str_t s );
-Wrd_t getstr( Wrd_t fd, Str_t buf, Wrd_t len );
+Wrd_t get_str( Wrd_t fd, Str_t buf, Wrd_t len );
 Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len );
 Wrd_t outp( Wrd_t fd, Str_t buf, Wrd_t len );
 Str_t str_error( Str_t buf, Wrd_t len, Str_t fn, Wrd_t lin );
@@ -785,6 +812,7 @@ Wrd_t str_match( Str_t a, Str_t b, Wrd_t len );
 Wrd_t str_length( Str_t str );
 Wrd_t str_literal( Str_t tkn, Wrd_t radix );
 Wrd_t str_format( Str_t dst, Wrd_t dlen, Str_t fmt, ... );
+Wrd_t str_format_ap( Str_t dst, Wrd_t dlen, Str_t fmt, va_list ap );
 void str_set( Str_t dst, Byt_t dat, Wrd_t len );
 Wrd_t str_copy( Str_t dst, Str_t src, Wrd_t len );
 Wrd_t str_utoa( uByt_t *dst, Wrd_t dlen, Cell_t val, Wrd_t radix );
@@ -800,8 +828,10 @@ Wrd_t utf8_encoder( Wrd_t ch, Str_t buf, Wrd_t len );
 Wrd_t ch_index( Str_t str, Byt_t c );
 void sig_hdlr( int sig );
 Wrd_t io_cbreak( int fd );
+Wrd_t fmt_out( Str_t fmt, ... );
 
 #ifdef HOSTED
+
 void sig_hdlr( int sig ){
   sigval = sig ;
   throw( err_CaughtSignal ) ;
@@ -820,10 +850,8 @@ static int do_x_Once = 1 ;
 
 void usage(int argc, char **argv )
 {
-  int nx ;
-  nx = str_format( (Str_t) tmp_buffer, (Wrd_t) sz_INBUF, "usage:\n\t%s [-i <infile>] [-q] [-x <word>]\n\n", argv[0] ) ;
-  put_str( (Str_t) tmp_buffer ) ; 
-  
+  Wrd_t nx ;
+  nx = fmt_out( "usage:\n\t%s [-i <infile>] [-q] [-x <word>]\n\n", argv[0] ) ;
 }
 
 #define STD_ARGS "i:x:qt"
@@ -853,12 +881,14 @@ void chk_args( int argc, char **argv )
     }
   }
   if( err )
+  {
      usage( argc, argv );
+     exit( 1 );
+  }
   return ;
 }
 
-
-#endif
+#endif // HOSTED
 
 Str_t  Locale = (Str_t) NULL ;
 Byt_t  found_eol = (Byt_t) 0 ;
@@ -1192,8 +1222,7 @@ Wrd_t str_literal( Str_t tkn, Wrd_t radix ){
    while( *p ){
      digit = ch_index( digits, ch_tolower( *p++ ) ) ;
      if( digit < 0 || digit > (base - 1) ){
-       fmt( "-- %s digit: '%x'\n", tkn, digit ) ;
-       put_str( (Str_t) tmp_buffer ) ;
+       fmt_out( "-- %s digit: '%x'\n", tkn, digit ) ;
        throw( err_BadLiteral ) ;
        return -1 ;
      }
@@ -1296,7 +1325,17 @@ Wrd_t str_ntoa( Str_t dst, Wrd_t dlen, Cell_t val, Wrd_t radix, Wrd_t isSigned )
 } 
 
 Wrd_t str_format( Str_t dst, Wrd_t dlen, Str_t fmt, ... ){
-  va_list ap;
+  Wrd_t rv ;
+  va_list ap ;
+
+  va_start( ap, fmt );
+    rv = str_format_ap( dst, dlen, fmt, ap ) ;
+  va_end( ap ) ;
+  return rv ;
+}
+    
+Wrd_t str_format_ap( Str_t dst, Wrd_t dlen, Str_t fmt, va_list ap ){
+  va_list ap2 ;
   Str_t p_fmt, p_dst, p_end, str ;
   Byt_t ch ;
   Wrd_t cell ;
@@ -1304,7 +1343,8 @@ Wrd_t str_format( Str_t dst, Wrd_t dlen, Str_t fmt, ... ){
   p_end = dst + dlen ;
   p_dst = dst ;
   p_fmt = fmt ;
-  va_start( ap, fmt );
+
+  va_copy( ap2, ap );
    while( (ch = *(p_fmt++)) && (p_dst < p_end) ){
      if( ch == '%' ){
        ch = *(p_fmt++) ;
@@ -1313,29 +1353,29 @@ Wrd_t str_format( Str_t dst, Wrd_t dlen, Str_t fmt, ... ){
           *p_dst++ = ch & 0xff ;
           break ;
         case 'c': // %c
-          ch = va_arg( ap, int );
+          ch = va_arg( ap2, int );
           *p_dst++ = ch & 0xff ;
           break ;
         case 's': // %s
-          str = va_arg( ap, Str_t );
+          str = va_arg( ap2, Str_t );
           p_dst += str_copy( p_dst, str, str_length( str ) ) ;
           break ;
         case 'l': // %l
           ch = *(p_fmt++) ;
         case 'd': // %d
-          cell = va_arg( ap, Cell_t ) ;
+          cell = va_arg( ap2, Cell_t ) ;
           p_dst += str_ntoa( p_dst, dlen - (p_dst - dst) - 1, cell, Base, 1 ) ;
           break ;
         case 'x': // %x
-          cell = va_arg( ap, Cell_t ) ;
+          cell = va_arg( ap2, Cell_t ) ;
           p_dst += str_ntoa( p_dst, dlen - (p_dst - dst) - 1, cell, 16, 0 ) ;
           break ;
         case 'o': // %o
-          cell = va_arg( ap, Cell_t ) ;
+          cell = va_arg( ap2, Cell_t ) ;
           p_dst += str_ntoa( p_dst, dlen - (p_dst - dst) - 1, cell, 8, 0 ) ;
           break ;
         case 'u': // %u
-          cell = va_arg( ap, uCell_t ) ;
+          cell = va_arg( ap2, uCell_t ) ;
           p_dst += str_utoa( (uByt_t *) p_dst, dlen - (p_dst - dst) - 1, (uCell_t) cell, Base ) ;
           break ;
         default:
@@ -1345,7 +1385,6 @@ Wrd_t str_format( Str_t dst, Wrd_t dlen, Str_t fmt, ... ){
       *p_dst++ = ch ;
     }
   }
-  va_end( ap ) ;
   *p_dst++ = (Byt_t) 0 ;
   return p_dst - dst - 1 ;
 }
@@ -1383,31 +1422,29 @@ Dict_t *lookup( Str_t tkn ){
 
   if( !isNul( tkn ) )
   {
-
-	if( n_ColonDefs > 0 )
-	{
-		for( i = n_ColonDefs - 1 ; i > -1 ; i-- )
-		{
-			p = &Colon_Defs[ i ] ;
-			if( isMatch( tkn, p ->nfa ) )
-			{
-				return p ;
-			}
-		}
+    if( n_ColonDefs > 0 )
+    {
+      for( i = n_ColonDefs - 1 ; i > -1 ; i-- )
+      {
+        p = &Colon_Defs[ i ] ;
+        if( isMatch( tkn, p ->nfa ) )
+        {
+          return p ;
+        }
+      }
     }
 
-	p = StartOf( Primitives ) ;
-	while( p ->nfa )
-	{
-		if( isMatch( tkn, p ->nfa ) )
-		{
-			return p ;
-		}
-		p++ ;
-	}
+    p = StartOf( Primitives ) ;
+    while( p ->nfa )
+    {
+       if( isMatch( tkn, p ->nfa ) )
+       {
+         return p ;
+       }
+       p++ ;
+    }
 
   }
-
   return (Dict_t *) NULL ;
 
 }
@@ -1428,11 +1465,10 @@ void quit(){
   beenhere = setjmp( env ) ;
   if( beenhere > 0 ){
     catch();
-    n = fmt( "-- Reset by %s.\n", resetfrom[beenhere] ) ;
-    outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
+    n = fmt_out( "-- Reset by %s.\n", resetfrom[beenhere] ) ;
     if( beenhere == rst_coldstart )
     {
-		banner() ;
+	banner() ;
     }
   }
 #endif
@@ -1451,24 +1487,21 @@ void quit(){
 } /* quit */
 
 void banner(){
-  Wrd_t n ;
+  Wrd_t UNUSED( n );
 
 #ifdef HOSTED
   if( quiet ) return ;
 #endif
 
-  n = fmt( "-- OneFileForth-%s alpha Version: %s.%s.%s%c (%s)\n", FLAVOUR, MAJOR, MINOR, REVISION, dbg, Locale ) ;
-  outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
-  n = fmt( "-- www.ControlQ.com\n\n" ) ;
-  outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
+  n = fmt_out( "-- OneFileForth-%s alpha Version: %s.%s.%s%c (%s)\n", FLAVOUR, MAJOR, MINOR, REVISION, dbg, Locale ) ;
+  n = fmt_out( "-- www.ControlQ.com\n\n" ) ;
 }
 
 void tracker( const char *fun, int line )
 {
-  Wrd_t n ;
+  Wrd_t UNUSED( n );
 
-  n = fmt( "-- %s: %d\n", fun, line ) ;
-  outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
+  n = fmt_out( "-- %s: %d\n", fun, line ) ;
 }
 
 void prompt(){
@@ -1556,19 +1589,20 @@ void dotS(){
 
 void dot(){
   Wrd_t n ;
+  Str_t buf = tb_get( TB );
 
   chk( 1 ) ;
-  n = fmt( "%d ", pop() ) ;
-  // n = fmt( "%d ", pop() ) - 1 ;
-  outp( OUTPUT, (Str_t) tmp_buffer, n ) ;
+  n = str_format( buf, tb_bufsize( TB ), "%d ", pop() ) ;
+  outp( OUTPUT, buf, n ) ;
 }
 
 void udot(){
-  Wrd_t n ;
+  Wrd_t UNUSED( n );
+  Str_t buf = tb_get( TB );
 
   chk( 1 ) ;
-  n = fmt( "%u ", (uCell_t) pop() ) - 1 ;
-  outp( OUTPUT, (Str_t) tmp_buffer, n ) ;
+  n = str_format( buf, tb_bufsize( TB ), "%u ", (uCell_t) pop() ) ;
+  outp( OUTPUT, buf, n ) ;
 }
 
 void bye(){
@@ -1579,7 +1613,7 @@ void bye(){
 
 void words(){
   Dict_t *p ;
-  Cell_t i, llen, nwords ;
+  Cell_t i, llen, wlen, nwords ;
 
   llen = 0 ; 
   nwords = 0 ; 
@@ -1588,42 +1622,42 @@ void words(){
     p = StartOf( Colon_Defs ) ;
     for( i = n_ColonDefs - 1 ; i > -1 ; i-- ){
       p = &Colon_Defs[i] ;
-	  if( llen + str_length( p ->nfa ) > 79 )
-	  {
-		put_str( "\n" );
-		llen = 0 ;
-	  }
-	  llen += str_length( p ->nfa );
-      put_str( p ->nfa ) ;
-	  nwords++ ;
+      wlen = str_length( p ->nfa ) ;
+      if( (llen + wlen) > 79 )
+      {
+	fmt_out( "\n" );
+	llen = 0 ;
+      }
+      llen += wlen ;
+      fmt_out( "%s ", p ->nfa ) ;
+      nwords++ ;
     }
   }
 
   p = StartOf( Primitives ) ;
-  while( p ->nfa ){
-	if( llen + str_length( p ->nfa ) > 79 )
-	{
-		put_str( "\n" );
-		llen = 0 ;
-	}
-	llen += str_length( p ->nfa );
-    put_str( p ->nfa ) ; 
-	nwords++ ;
+  while( p ->nfa )
+  {
+    wlen = str_length( p ->nfa ) ;
+    if( (llen + wlen) > 79 )
+    {
+       fmt_out( "\n" );
+       llen = 0 ;
+    }
+    llen += wlen ;
+    fmt_out( "%s ", p ->nfa ) ; 
+    nwords++ ;
     p++ ;
   }
-  put_str( "\n -- " );
-  push( nwords ); dot(); 
-  put_str( "words." ); cr();
+  fmt_out( "\n -- %d words.\n", nwords );
 }
 
 Wrd_t checkstack( Wrd_t n, Str_t fun ){
-  Wrd_t x, d ;
+  Wrd_t UNUSED( x ), d ;
 
   if( n > 0 ) {
     depth(); d = pop() ;
     if( d < n ){
-      x = fmt( "-- Found %d of %d args expected in '%s'.\n", d, n, fun ) ; 
-      outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), x ) ;
+      x = fmt_out( "-- Found %d of %d args expected in '%s'.\n", d, n, fun ) ; 
       throw( err_StackUdr ) ;
 #ifdef HOSTED
       longjmp( env, rst_checkstack ) ;
@@ -1974,7 +2008,7 @@ void err_throw( Str_t whence, Err_t err ){
 }
 
 void catch(){
-  Wrd_t sz ;
+  Wrd_t UNUSED( sz );
   Input_t *input = &InputStack[ in_This ];
 
   switch( error_code ){
@@ -1984,32 +2018,26 @@ void catch(){
 #ifdef HOSTED
     case err_CaughtSignal:
       chk( 0 ) ;
-      sz = fmt( "%s (%d)\n", errors[error_code], error_code ) ;
-      outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+      sz = fmt_out( "%s (%d)\n", errors[error_code], error_code ) ;
       if( sigval == SIGSEGV ){
-        sz = fmt( "-- SIGSEGV (%d) is generally non recoverable.\n", sigval ) ;
-        outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+        sz = fmt_out( "-- SIGSEGV (%d) is generally non recoverable.\n", sigval ) ;
         goto reset;
       }
 
       Fptr_t ok = signal( sigval, sig_hdlr ) ;
-      sz = fmt( "-- Signal %d handled. (%x)\n", sigval, ok ) ;
-      outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+      sz = fmt_out( "-- Signal %d handled. (%x)\n", sigval, ok ) ;
       if( sigval == SIGINT )
       {
-        put_str( "-- warm start suggested." ) ; cr() ;
+        sz = fmt_out( "-- warm start suggested.\n" ) ;
         Leave();
       }
       return ;
       goto reset;
 
     case err_SysCall:
-      sz = fmt( "%s (%d)\n", errors[error_code], error_code ) ;
-      outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
-      sz = fmt( "-- %d %s.\n", errno, (Str_t) strerror( errno ) ) ;
-      outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
-      sz = fmt( "-- Thrown by %s.\n", error_loc ) ;
-      outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+      sz = fmt_out( "%s (%d)\n", errors[error_code], error_code ) ;
+      sz = fmt_out( "-- %d %s.\n", errno, (Str_t) strerror( errno ) ) ;
+      sz = fmt_out( "-- Thrown by %s.\n", error_loc ) ;
       goto reset;
 
 #endif
@@ -2017,15 +2045,11 @@ void catch(){
     case err_NoInput:
     default:
       chk( 0 ) ;
-      sz = fmt( "%s (%d)\n", errors[error_code], error_code ) ;
-      outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
-      sz = fmt( "-- Error: code is %d.\n", error_code ) ;
-      outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
-      sz = fmt( "-- Thrown by %s.\n", error_loc ) ;
-      outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+      sz = fmt_out( "%s (%d)\n", errors[error_code], error_code ) ;
+      sz = fmt_out( "-- Error: code is %d.\n", error_code ) ;
+      sz = fmt_out( "-- Thrown by %s.\n", error_loc ) ;
       if( error_code <= err_Undefined ){
-        sz = fmt( "%s (%d).\n", errors[error_code], error_code ) ;
-        outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+        sz = fmt_out( "%s (%d).\n", errors[error_code], error_code ) ;
       }
       if( error_code == err_NoInput ){
         goto die ;
@@ -2034,21 +2058,17 @@ void catch(){
   }
 
   dump() ;
-  sz = fmt( "-- Stack Dump: Depth = " ) ;
-  outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
-  dotS() ;
-  cr() ;
+  sz = fmt_out( "-- Stack Dump: Depth = " ) ;
+  dotS() ; cr() ;
   goto reset;
 
  die:
   dump() ;
-  sz = fmt( "-- Stack Dump: Depth = " ) ;
-  outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+  sz = fmt_out( "-- Stack Dump: Depth = " ) ;
   dotS() ; cr() ;
   if( error_code != err_OK && error_code != err_NoInput )
   {
-    sz = fmt( "-- Abnormal Termination.\n" ) ;
-    outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+    sz = fmt_out( "-- Abnormal Termination.\n" ) ;
   }
 #ifdef HOSTED
   exit( error_code ) ;
@@ -2056,14 +2076,11 @@ void catch(){
 
  reset:
   dump() ;
-  put_str( "-- Last input: ") ; 
-  put_str( input->bytes ) ; cr() ;
+  fmt_out( "-- Last input: %s\n", input->bytes) ; 
   q_reset() ;
-  sz = fmt( "-- Remaining input flushed.\n" ) ;
-  outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+  sz = fmt_out( "-- Remaining input flushed.\n" ) ;
   flushtoeol();
-  sz = fmt( "-- Attempting Reset.\n" ) ;
-  outp( OUTPUT, (Str_t) tmp_buffer, sz ) ;
+  sz = fmt_out( "-- Attempting Reset.\n" ) ;
 #ifdef HOSTED
   longjmp( env, rst_catch );
 #endif
@@ -2309,14 +2326,9 @@ void unssave(){
   throw( err_Unsave ) ;
 }
 
-void SCratch(){
-  push( (Cell_t) scratch ) ;
-  push( (Cell_t) sz_INBUF ) ;
-}
-
 void Buf(){
-  push( (Cell_t) garbage ) ;
-  push( (Cell_t) sz_INBUF ) ;
+  push( (Cell_t) tb_get( TB ) ) ;
+  push( (Cell_t) tb_bufsize( TB ) ) ;
 }
 
 void pad(){
@@ -2407,7 +2419,9 @@ void key(){
 
 void emit(){
   chk( 1 ) ; 
-  outp( OUTPUT, (Str_t) tmp_buffer, utf8_encoder( pop(), (Str_t) tmp_buffer, (Wrd_t) sz_INBUF ) ) ;
+
+  Str_t buf = tb_get( TB ); 
+  outp( OUTPUT, (Str_t) buf, utf8_encoder( pop(), (Str_t) buf, (Wrd_t) tb_bufsize( TB ) ) ) ;
 }
 
 void type(){
@@ -2597,7 +2611,7 @@ void compile(){
         Here = save ;
         state = state_Interpret ;
         throw( err_BadString ) ;
-		put_str( tkn ) ;
+        put_str( tkn ) ;
         return ; /* like it never happened */
       }
       push( value ) ;
@@ -2821,44 +2835,40 @@ void see(){
 
   p = (Dict_t *) pop() ;
   if( isNul( p ->pfa ) ){
-    n = fmt( "-- %s (%x) flg: %d is coded in C (%x).\n", p ->nfa, p, p->flg, p ->cfa ) ;
-    outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
+    n = fmt_out( "-- %s (%x) flg: %d is coded in C (%x).\n", p ->nfa, p, p->flg, p ->cfa ) ;
     return ;
   } else {
     if( p ->cfa == (Fptr_t) doConstant ){
-      n = fmt( "-- %s constant value (0x%x).\n", p ->nfa, *p->pfa ) ;
-      outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
+      n = fmt_out( "-- %s constant value (0x%x).\n", p ->nfa, *p->pfa ) ;
       return ;
     }
     if( p ->cfa == (Fptr_t) pushPfa ){
-      n = fmt( "-- %s variable value (0x%x).\n", p ->nfa, *p->pfa ) ;
-      outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
+      n = fmt_out( "-- %s variable value (0x%x).\n", p ->nfa, *p->pfa ) ;
       return ;
     }
-    n = fmt( "-- %s (%x) word flg: %d.\n", p ->nfa, p, p->flg ) ;
-    outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
+    n = fmt_out( "-- %s (%x) word flg: %d.\n", p ->nfa, p, p->flg ) ;
   }
   ptr = p ->pfa ; 
   while( !isNul( ptr ) ){
     r = (Dict_t *) *ptr ;
     if( isNul( r ) ){			/* next == NULL */
-      n = fmt( "%x  next\n", ptr ) ;
-      outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
+      n = fmt_out( "%x  next\n", ptr ) ;
       break ;
     }
+    Str_t buf = tb_get( TB ) ;
     if( r ->cfa  == (Fptr_t) branch ){
-      n = fmt( "%x  %s -> %x\n", ptr, r ->nfa, *(ptr+1) ) ;
+      n = str_format( buf, tb_bufsize( TB ), "%x  %s -> %x\n", ptr, r ->nfa, *(ptr+1) ) ;
       ptr++ ;
     } else  if( r ->cfa  == (Fptr_t) q_branch ){
-      n = fmt( "%x  %s -> %x\n", ptr, r ->nfa, *(ptr+1) ) ;
+      n = str_format( buf, tb_bufsize( TB ), "%x  %s -> %x\n", ptr, r ->nfa, *(ptr+1) ) ;
       ptr++ ;
     } else if( r ->cfa  == (Fptr_t) doLiteral ){
-      n = fmt( "%x  %s = %d\n", ptr, r ->nfa, *(ptr+1) ) ;
+      n = str_format( buf, tb_bufsize( TB ), "%x  %s = %d\n", ptr, r ->nfa, *(ptr+1) ) ;
       ptr++ ;
     } else {
-      n = fmt( "%x  %s\n", ptr, r ->nfa ) ;
+      n = str_format( buf, tb_bufsize( TB ), "%x  %s\n", ptr, r ->nfa ) ;
     }
-    outp( OUTPUT, (Str_t) StartOf( tmp_buffer ), n ) ;
+    outp( OUTPUT, (Str_t) buf, n ) ;
     ptr++ ;
   }
 }
@@ -2876,8 +2886,22 @@ void see(){
 
 */
 
-Wrd_t put_str( Str_t s ){
+Wrd_t fmt_out( Str_t fmt, ... )
+{
+  va_list  ap ;
+  Wrd_t    nx, siz ;
+  Str_t    buf = tb_get( TB );
 
+  siz = tb_bufsize( TB ) ;
+  va_start( ap, fmt );
+   nx = str_format_ap( buf, siz, fmt, ap ) ;
+  va_end( ap ) ;
+
+  outp( OUTPUT, buf, nx );
+  return nx ;
+}
+
+Wrd_t put_str( Str_t s ){
   register Cell_t n = 0;
 
   if( !isNul( s ) ){
@@ -2886,7 +2910,34 @@ Wrd_t put_str( Str_t s ){
     outp( OUTPUT, " ", 1 ) ;
   }
   return n ;
+}
 
+Wrd_t get_str( Wrd_t fd, Str_t buf, Wrd_t len ){
+  Byt_t ch ;
+  Wrd_t i, crlf = 0 ;
+
+  str_set( buf, 0, len ) ;
+
+  i = 0 ; 
+  do {
+    if( i > (len - 1) ){
+      return i ;
+    }
+
+	key() ; ch = pop() & 0xff ;
+    if( ch == 0 )
+    {
+      return i ;
+    }
+
+    if( ch_matches( ch, "\r\n" ) ){ 
+       crlf++ ;
+    }
+
+    buf[i++] = (Byt_t) ch ;
+
+  } while( crlf < 1 ) ;
+  return i ;
 }
 
 Wrd_t io_cbreak( int fd ){
@@ -2956,34 +3007,6 @@ void sndtty(){ /* ( fd ptr -- nx ) */
   push( (Cell_t) outp( fd, str, len ) ) ;
 }
 
-Wrd_t getstr( Wrd_t fd, Str_t buf, Wrd_t len ){
-  Byt_t ch ;
-  Wrd_t i, crlf = 0 ;
-
-  str_set( buf, 0, len ) ;
-
-  i = 0 ; 
-  do {
-    if( i > (len - 1) ){
-      return i ;
-    }
-
-	key() ; ch = pop() & 0xff ;
-    if( ch == 0 )
-    {
-      return i ;
-    }
-
-    if( ch_matches( ch, "\r\n" ) ){ 
-       crlf++ ;
-    }
-
-    buf[i++] = (Byt_t) ch ;
-
-  } while( crlf < 1 ) ;
-  return i ;
-}
-
 #ifdef HOSTED
 void rcvtty(){	/* ( fd n -- buf n ) */
   Str_t buf ;
@@ -2995,7 +3018,7 @@ void rcvtty(){	/* ( fd n -- buf n ) */
   fd = pop() ;
   here() ; buf = (Str_t) pop() + 8 * sizeof( Cell_t ) ;
   in_files[++in_This] = fd ; 
-  nr = getstr( fd, buf, n ) ;
+  nr = get_str( fd, buf, n ) ;
   --in_This ;
   push( (Cell_t) buf ) ;
   push( (Cell_t) nr ) ;
@@ -3069,8 +3092,8 @@ void infile()
 		InputStack[ in_This ].bytes_read = -1 ; 
 		InputStack[ in_This ].bytes_this = -1 ; 
 		InputStack[ in_This ].in_line = 0 ; 
-	    InputStack[ in_This ].name = str_cache( fn ) ;
-	    InputStack[ in_This ].bytes = (Str_t) inbuf[ in_This ] ; 
+		InputStack[ in_This ].name = str_cache( fn ) ;
+		InputStack[ in_This ].bytes = (Str_t) inbuf[ in_This ] ; 
 		InputStack[ in_This ].file = open( InputStack[ in_This ].name , O_RDONLY ) ;
 
 		if( InputStack[ in_This ].file < 0 )
@@ -3078,8 +3101,9 @@ void infile()
 			str_uncache( fn ) ;
 			if( !isNul( off_path ) ) // add the file path and try again ...
 			{
-				str_format( (Str_t) tmp_buffer, sz_INBUF, "%s/%s", (Str_t) off_path, (Str_t) fn ) ;
-    				InputStack[ in_This ].name = str_cache( (Str_t) tmp_buffer ) ;
+				Str_t buf = tb_get( TB ) ;
+				str_format( buf, tb_bufsize( TB ), "%s/%s", (Str_t) off_path, (Str_t) fn ) ;
+    				InputStack[ in_This ].name = str_cache( (Str_t) buf ) ;
 				InputStack[ in_This ].file = open( InputStack[ in_This ].name , O_RDONLY ) ;
 			} 
 		}
@@ -3245,7 +3269,6 @@ void qdlsym(){
 }
 
 void qdlerror(){
-  chk( 0 ) ; 
   push( (Cell_t) dlerror() ) ;
 }
 
@@ -3321,6 +3344,8 @@ void callout(){
 void clkspersec(){
 #ifdef HOSTED
   push( CLOCKS_PER_SEC ) ;
+#else
+  push( -1 ) ;
 #endif
 }
 
@@ -3445,11 +3470,18 @@ void do_ploop(){
 
 void forget()
 {
-  Here = (Cell_t *) StartOf( flash ) ;				// erase colon defs vars and constants ...
-  DictPtr = (Cell_t *) StartOf( flash ) ;			// set the dictptr to here ...
-  n_ColonDefs = 0 ; 								// uncount the colon defs ... 
+  if( !isNul( TB ) )
+  {
+    TB = tb_destroy( TB ) ;
+  }
+  TB = tb_create( tmp_buffer, sz_TMPBUFFER, nm_TMPBUFFER ) ;
+
+  Here = (Cell_t *) StartOf( flash ) ;		// erase colon defs vars and constants ...
+  DictPtr = (Cell_t *) StartOf( flash ) ;	// set the dictptr to here ...
+  n_ColonDefs = 0 ; 				// uncount the colon defs ... 
   Base = 10 ;
   Trace = 0 ;
+  state = state_Interactive ;
 
   if( isNul( String_LowWater ) )
 	String_Data = (Byt_t *) (&flash[sz_FLASH - 1]) ;	// erase the string data referenced in the dictionary
@@ -3463,11 +3495,7 @@ void fmt_start() 	// ( n -- <ptr> n )
 {
   sign_is_negative = 0 ;
   Buf() ;
-  push( 0 ) ; 
-  fill() ;	// clear out the tmp buffer ...
-  Buf() ;
   add() ; 	// this buffer fills backwards 
-  minusminus() ;
   swap() ;
   fmt_sign() ;
 }
@@ -3552,7 +3580,7 @@ void accept() // ( buf len -- len )
   len = (Wrd_t) pop() ;
   buf = (Str_t) pop() ;
 
-  push( (Wrd_t) getstr( INPUT, buf, len ) ) ;
+  push( (Wrd_t) get_str( INPUT, buf, len ) ) ;
   
 }
 
@@ -3561,23 +3589,21 @@ void dump()
   Cell_t  **p ;
   Dict_t *dp ;
 
-  outp( OUTPUT, (Str_t) tmp_buffer, str_format( (Str_t) tmp_buffer, sz_INBUF, "-- Input File: %s Line: %d:\n", 
-	InputStack[ in_This ].name, InputStack[ in_This ].in_line ) ) ;
-  outp( OUTPUT, (Str_t) tmp_buffer, str_format( (Str_t) tmp_buffer, sz_INBUF, "-- Forth Backtrace:\n" ) ) ;
+  fmt_out( "-- Input File: %s Line: %d:\n", InputStack[ in_This ].name, InputStack[ in_This ].in_line ) ;
+  fmt_out( "-- Forth Backtrace:\n" ) ;
   while( rtos != StartOf( rstack ) )
   {
     p = (Cell_t **) rpop() ;
     if( !isNul( p ) )
     {
-
         dp = (Dict_t *) *p ;
         if( !isNul( dp ) )
-		  outp( OUTPUT, (Str_t) tmp_buffer, str_format( (Str_t) tmp_buffer, sz_INBUF, "  -- %x %x (%s)\n", (p), dp, dp->nfa ) ) ;
+		  fmt_out( "  -- %x %x (%s)\n", (p), dp, dp->nfa ) ;
 
         dp = (Dict_t *) *(p-1) ;
         if( !isNul( dp ) )
         {
-		  outp( OUTPUT, (Str_t) tmp_buffer, str_format( (Str_t) tmp_buffer, sz_INBUF, "  -- %x %x (%s)\n", (p-1), dp, dp->nfa ) ) ;
+		  fmt_out( "  -- %x %x (%s)\n", (p-1), dp, dp->nfa ) ;
         }
     }
   }
@@ -3637,3 +3663,70 @@ void fill() // ( dst n char -- )
   dst = (Str_t) pop() ;
   str_set( dst, ch, n ) ;
 }
+
+// a late addition to OneFileForth is a circular buffer queue designed to
+// return a reasonably sized buffer chunk from a fixed memory location in
+// a round robin fashion, such that internal memory requirements will not
+// conflict ... this is an internal only implementation ... see Buf().
+Cir_Queue_t     *tb_create( Byt_t *memory, unsigned size, unsigned n_elements )
+{
+  Cir_Queue_t *rv = NULL ;
+  unsigned chunksz = 0 ;
+
+  if( size > CQ_MAX_BUFFER )
+  {
+    return (Cir_Queue_t *) rv ;
+  }
+
+  if( n_elements < CQ_MIN_CHUNKS )
+  {
+    return (Cir_Queue_t *) rv ;
+  }
+
+  chunksz = (size - sizeof( Cir_Queue_t )) / n_elements ;
+
+  rv = (Cir_Queue_t *) memory ;
+  str_set( (Str_t) memory, 0, size ) ;
+  rv -> cq_memory = (Str_t) memory ;
+  rv -> cq_memsize = size ;
+  rv -> cq_chunksize = (uint16_t) chunksz ;
+  rv -> cq_n_elements = n_elements ;
+  rv -> cq_next = 0 ;
+  rv -> cq_buffer = (Str_t) ( memory + sizeof( Cir_Queue_t ) ) ;
+
+  return rv ;
+}
+
+Cir_Queue_t *tb_destroy( Cir_Queue_t *CQ )
+{
+  if( !isNul( CQ ) )
+  {
+    str_set( (Str_t) CQ->cq_memory, 0, CQ->cq_memsize ) ;
+  }
+  return (Cir_Queue_t *) NULL ;
+}
+ 
+int     tb_bufsize( Cir_Queue_t *CQ )
+{
+  if( !isNul( CQ ) )
+  {
+    return (int) CQ-> cq_chunksize ;
+  }
+  return (int) -1;
+}
+   
+void    *tb_get( Cir_Queue_t *CQ )
+{
+  int ix ;
+  void *rv = (void *) NULL ;
+
+  if( !isNul( CQ ) )
+  {
+    ix = CQ->cq_next++ % CQ->cq_n_elements ;
+    CQ->cq_next = ( CQ->cq_next < CQ->cq_n_elements ) ? CQ->cq_next : 0 ;
+    rv = (void *) ( CQ->cq_buffer + ( ix * CQ->cq_chunksize ) ) ;
+    str_set( rv, 0, tb_bufsize( CQ ) ) ;
+  }
+  return rv ;
+}
+
