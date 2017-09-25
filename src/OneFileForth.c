@@ -260,7 +260,7 @@ Str_t	off_path = (Str_t) NULL ;
 #define v_On		1
 #define push( x )	*(++tos) = (Cell_t) x
 #define pop()		*(tos--)
-#define nos			 tos[-1]
+#define nos		 tos[-1]
 #define rpush( x )	*(++rtos) = x
 #define rpop()		*(rtos--)
 #define upush( x )	*(++utos) = x
@@ -1601,9 +1601,11 @@ void dot(){
 
 void udot(){
   Wrd_t UNUSED( n );
+  Str_t buf = tb_get( TB );
 
   chk( 1 ) ;
-  n = fmt_out( "%u ", (uCell_t) pop() ) - 1 ;
+  n = str_format( buf, tb_bufsize( TB ), "%u ", (uCell_t) pop() ) ;
+  outp( OUTPUT, buf, n ) ;
 }
 
 void bye(){
@@ -2029,7 +2031,7 @@ void catch(){
       sz = fmt_out( "-- Signal %d handled. (%x)\n", sigval, ok ) ;
       if( sigval == SIGINT )
       {
-        fmt_out( "-- warm start suggested.\n" ) ;
+        sz = fmt_out( "-- warm start suggested.\n" ) ;
         Leave();
       }
       return ;
@@ -2612,7 +2614,7 @@ void compile(){
         Here = save ;
         state = state_Interpret ;
         throw( err_BadString ) ;
-		put_str( tkn ) ;
+        put_str( tkn ) ;
         return ; /* like it never happened */
       }
       push( value ) ;
@@ -2890,13 +2892,15 @@ void see(){
 Wrd_t fmt_out( Str_t fmt, ... )
 {
   va_list  ap ;
-  Wrd_t    nx ;
+  Wrd_t    nx, siz ;
   Str_t    buf = tb_get( TB );
 
+  siz = tb_bufsize( TB ) ;
   va_start( ap, fmt );
-   nx = str_format_ap( buf, tb_bufsize( TB ), fmt, ap ) ;
-   outp( OUTPUT, buf, tb_bufsize( TB ) );
+   nx = str_format_ap( buf, siz, fmt, ap ) ;
   va_end( ap ) ;
+
+  outp( OUTPUT, buf, nx );
   return nx ;
 }
 
@@ -3269,10 +3273,8 @@ void qdlsym(){
 }
 
 void qdlerror(){
-  chk( 0 ) ; 
   push( (Cell_t) dlerror() ) ;
 }
-
 
 void last_will(){
   Opq_t cmd ;
@@ -3346,6 +3348,8 @@ void callout(){
 void clkspersec(){
 #ifdef HOSTED
   push( CLOCKS_PER_SEC ) ;
+#else
+  push( -1 ) ;
 #endif
 }
 
