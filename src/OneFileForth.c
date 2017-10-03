@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"61"
+#define REVISION	"62"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -237,6 +237,7 @@ typedef struct _cque_ {
 Cir_Queue_t     *tb_create( Cir_Queue_t *Q, Byt_t *chunk, Wrd_t size, Wrd_t n_elements ) ;
 Cir_Queue_t     *tb_destroy( Cir_Queue_t *CQ ) ;
 int              tb_bufsize( Cir_Queue_t *CQ ) ;
+int            	 tb_nbufs( Cir_Queue_t *CQ ) ;
 void            *tb_get( Cir_Queue_t *CQ ) ;
 
 Cir_Queue_t T ;
@@ -406,6 +407,7 @@ void or();
 void xor();
 void not();
 void Buf();
+void nBufs();
 void pad();
 void comment();
 void flushtoeol();
@@ -618,6 +620,7 @@ Dict_t Primitives[] = {
   { xor,	"xor", Normal, NULL },
   { not,	"not", Normal, NULL },
   { Buf,	"buf", Normal, NULL },
+  { nBufs,	"nbufs", Normal, NULL },
   { Buf,	"scratch", Normal, NULL },
   { pad,	"pad", Normal, NULL },
   { comment,	"(", Immediate, NULL },
@@ -788,6 +791,7 @@ Str_t promptStr[] = {
 
 Str_t error_loc = (Str_t) NULL ;
 Err_t error_code = 0 ;
+Str_t digits = { "0123456789abcdefghijklmnopqrstuvwxyz" } ;
 
 /*
  -- string and character handling stuff which converts
@@ -1172,7 +1176,6 @@ Wrd_t str_length( Str_t str ){
 }
 
 Wrd_t str_literal( Str_t tkn, Wrd_t radix ){
-  Str_t digits = "0123456789abcdefghijklmnopqrstuvwxyz" ;
   Wrd_t  ret, sign, digit, base ;
   Str_t p ;
 
@@ -2319,6 +2322,11 @@ void unssave(){
     return ;
   }
   throw( err_Unsave ) ;
+}
+
+void nBufs()
+{
+  push( tb_nbufs( TB ) ) ;
 }
 
 void Buf(){
@@ -3504,7 +3512,6 @@ void fmt_start() 	// ( n -- <ptr> n )
 void fmt_digit()	// ( <ptr> n -- <ptr-1> n2 ) : # dup base @ % . base @ / ;
 {
   register Cell_t n, digit ;
-  Str_t digits = "0123456789abcdefghijklmnopqrstuvwxyz" ;
   Str_t ptr ;
 
   if( *tos )
@@ -3703,6 +3710,11 @@ Cir_Queue_t *tb_destroy( Cir_Queue_t *CQ )
   return (Cir_Queue_t *) NULL ;
 }
  
+int     tb_nbufs( Cir_Queue_t *CQ )
+{
+  return CQ->cq_n_elements ;
+}
+
 int     tb_bufsize( Cir_Queue_t *CQ )
 {
   if( !isNul( CQ ) )
