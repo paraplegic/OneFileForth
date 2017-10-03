@@ -363,6 +363,7 @@ void sigvar() ;
 void errvar() ;
 void errval() ;
 void errstr() ;
+void errmax() ;
 void base() ;
 void trace() ;
 void resetter() ;
@@ -575,9 +576,10 @@ Dict_t Primitives[] = {
   { base,	"base", Normal, NULL },
   { trace,	"trace", Normal, NULL },
   { sigvar,	"sigval", Normal, NULL },
-  { errvar,	"errvar", Normal, NULL },
-  { errval,	"errval", Normal, NULL },
-  { errstr,	"errstr", Normal, NULL },
+  { errvar,	"err_var", Normal, NULL },
+  { errval,	"err_val", Normal, NULL },
+  { errstr,	"err_str", Normal, NULL },
+  { errmax,	"err_max", Normal, NULL },
   { resetter,	"warm", Normal, NULL },
   { cold,	"cold", Normal, NULL },
   { see,	"see", Normal, NULL },
@@ -2803,6 +2805,11 @@ void errstr(){
   else
      throw( err_Range ) ;
   return ;
+}
+
+void errmax()
+{
+  push( err_Undefined ) ;
 }
 
 void trace(){
