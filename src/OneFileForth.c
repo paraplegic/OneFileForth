@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"60"
+#define REVISION	"61"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -220,8 +220,10 @@ Byt_t *inbuf[] = {
 	NULL
 } ;
 
-// temp buffer circular queue ... see implementation
-// below for details ... 
+// temp buffer circular queue ... see implementation below for details ... 
+#define CQ_MAX_BUFFER 65535
+#define CQ_MIN_CHUNKS 1
+
 typedef struct _cque_ {
   Str_t  cq_memory ;
   Wrd_t  cq_memsize ;
@@ -231,20 +233,11 @@ typedef struct _cque_ {
   Str_t  cq_buffer ;
 } Cir_Queue_t ;
 
-#define CQ_MAX_BUFFER 65535
-#define CQ_MIN_CHUNKS 1
-
-/*
-   -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-   public interface ...
-   -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-*/
-
+//   temp buffer public interface ...
 Cir_Queue_t     *tb_create( Cir_Queue_t *Q, Byt_t *chunk, Wrd_t size, Wrd_t n_elements ) ;
 Cir_Queue_t     *tb_destroy( Cir_Queue_t *CQ ) ;
 int              tb_bufsize( Cir_Queue_t *CQ ) ;
 void            *tb_get( Cir_Queue_t *CQ ) ;
-
 
 Cir_Queue_t T ;
 Cir_Queue_t *TB = (Cir_Queue_t *) NULL ;
@@ -3497,17 +3490,15 @@ int sign_is_negative = 0 ;
 
 void fmt_start() 	// ( n -- <ptr> n )
 {
+  Str_t ptr ;
+
+  chk( 1 ) ;
+
   sign_is_negative = 0 ;
-  Buf() ;				// ( n -- n ptr len )
-  add() ; 				// ( n ptr len -- n ptr+len ) this buffer fills backwards 
-  if( *tos )
-  {
-    push( 0 ) ;			// drop a null byte at the end of the buffer ...
-    over() ;
-    byt_store() ;
-  }
-  *tos -= 1 ;			// leave room for a null ...
-  swap() ;				// ( n ptr -- ptr n )
+  ptr = tb_get( TB ) + tb_bufsize( TB ) - 1 ;
+  *(ptr--) = (Byt_t) 0 ;		// drop a null byte at the end of the buffer ...
+  push( ptr ) ;					// back the buffer up for the next char ... 
+  swap() ;						// ( n ptr -- ptr n )
 }
 
 void fmt_digit()	// ( <ptr> n -- <ptr-1> n2 ) : # dup base @ % . base @ / ;
@@ -3518,7 +3509,7 @@ void fmt_digit()	// ( <ptr> n -- <ptr-1> n2 ) : # dup base @ % . base @ / ;
 
   if( *tos )
   {
-    fmt_sign() ;
+    // fmt_sign() ;
     n = pop() ;						//	( ptr n -- ptr )
     ptr = (Str_t) pop() ;			//  ( ptr -- )
     digit = ( (Abs( n ) % Base) ) ;
