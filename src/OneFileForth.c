@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"62"
+#define REVISION	"63"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -467,6 +467,9 @@ void code();
 void data();
 void align();
 void fill();
+void it_set();
+void it_reset();
+void it_doit( int sig );
 
 /*
   -- dictionary is simply an array of struct ...
@@ -651,6 +654,9 @@ Dict_t Primitives[] = {
   { last_will,	"atexit", Normal, NULL },
   { spinner,	"spin", Normal, NULL },
   { path,	"path", Normal, NULL }, // ( -- ptr )
+  { it_set, "it_set", Normal, NULL },
+  { it_reset, "it_reset", Normal, NULL },
+  { it_doit, "it_doit", Normal, NULL },
 #endif /* HOSTED */
   { callout,	"native", Normal, NULL },
   { clkspersec,	"clks", Normal, NULL },
@@ -3206,7 +3212,15 @@ Wrd_t outp( Wrd_t fd, Str_t buf, Wrd_t len ){
 Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
 
 #ifdef HOSTED
-  return read( fd, buf, len ) ;
+  Wrd_t nx ;
+ again:
+  nx = read( fd, buf, len ) ;
+  if( nx < 0 )
+  {
+    if( errno == EINTR )
+      goto again ;
+  }
+  return nx ; 
 #endif
 
 #ifdef NATIVE
@@ -3746,3 +3760,50 @@ void    *tb_get( Cir_Queue_t *CQ )
   return rv ;
 }
 
+#ifdef HOSTED
+Fptr_t it_handler = NULL ;
+void	it_doit( int signal ) // ( -- ) 
+{
+  if( !isNul( it_handler ) )
+  {
+    push( it_handler ) ;
+    execute() ;
+  }
+}
+
+void	it_reset()	// ( -- ) 
+{
+  push( 0 ) ; 
+  push( 0 ) ; 
+  push( 0 ) ; 
+  it_set() ;
+}
+
+void	it_set()	// ( secs usecs pfa -- )
+{
+  struct sigaction action ;
+  struct itimerval timer ;
+
+  memset( &action, 0, sizeof( action ) ) ;
+  memset( &timer, 0, sizeof( timer ) ) ;
+
+  Wrd_t usec, sec ;
+  Fptr_t wordptr ;
+
+  chk( 3 ) ;
+  it_handler = (Fptr_t) pop() ;
+  usec = pop() ;
+  sec = pop() ;
+
+  action.sa_handler = it_doit ;
+  sigaction( SIGALRM, &action, NULL ) ;
+ 
+  timer.it_value.tv_sec = sec ;
+  timer.it_value.tv_usec = usec ;
+  timer.it_interval.tv_sec = sec ;
+  timer.it_interval.tv_usec = usec ;
+  if( setitimer( ITIMER_REAL, &timer, NULL ) ) 
+    throw( err_SysCall ) ;
+
+}
+#endif
