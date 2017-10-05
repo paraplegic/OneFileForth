@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"63"
+#define REVISION	"64"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -3197,15 +3197,27 @@ void isfile(){
 
 Wrd_t outp( Wrd_t fd, Str_t buf, Wrd_t len ){
 #ifdef HOSTED
-  return write( fd, buf, len ) ;
+  Wrd_t nx ;
+
+ again:
+  nx = write( fd, buf, len ) ;
+  if( nx < 0 )
+  {
+    if( errno == EINTR )
+      goto again ;
+  }
+  return nx ; 
+
 #endif
 #ifdef NATIVE
-  Cell_t i ;
+  Wrd_t i ;
+
   for( i = 0 ; i < len; i++ )
   {
     uart_putc( (unsigned) buf[i]&0xff );
   }
   return i ;
+
 #endif
 }
 
@@ -3213,6 +3225,7 @@ Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
 
 #ifdef HOSTED
   Wrd_t nx ;
+
  again:
   nx = read( fd, buf, len ) ;
   if( nx < 0 )
