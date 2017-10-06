@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"64"
+#define REVISION	"65"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -3190,6 +3190,10 @@ void isfile(){
   if( !isNul( fn ) )
   {
     rv = stat( (const Str_t ) fn, &sbuf ) ;
+    if( rv < 0 )
+    {
+      throw( err_SysCall ) ;
+    }
   }
   push( (rv == 0) ? 1 : 0 ) ; 
 #endif
