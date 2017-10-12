@@ -220,7 +220,8 @@ Byt_t *inbuf[] = {
 	NULL
 } ;
 
-// temp buffer circular queue ... see implementation below for details ... 
+// temp buffer circular queue ... 
+// see implementation below for details.
 #define CQ_MAX_BUFFER 65535
 #define CQ_MIN_CHUNKS 1
 
@@ -1470,12 +1471,10 @@ void quit(){
     catch();
     n = fmt_out( "-- Reset by %s.\n", resetfrom[beenhere] ) ;
     if( beenhere == rst_coldstart )
-    {
-	banner() ;
-    }
+      banner() ;
   }
 #endif
-  for(;;){
+  for(;;){ // *outer loop*
     while( (tkn = str_token( &InputStack[in_This] )) ){
       dp = lookup( tkn );
       if( isNul( dp ) ){
@@ -1485,9 +1484,9 @@ void quit(){
         execute() ;
       }
       catch() ;
-    } /* tkn */
-  } /* ever */
-} /* quit */
+    } // *tkn*
+  } // *ever*
+} // *quit*
 
 void banner(){
   Wrd_t UNUSED( n );
@@ -2836,12 +2835,12 @@ void resetter(){
 
 void cold()
 {
+  put_str( "-- Cold start." ) ; cr();
   q_reset() ;
   forget() ;
 #ifdef HOSTED
   longjmp( env, rst_coldstart ) ;
 #else
-  banner();
 #endif
 }
 
@@ -3801,13 +3800,14 @@ void	it_set()	// ( secs usecs pfa -- )
   struct sigaction action ;
   struct itimerval timer ;
 
+  chk( 3 ) ;
+
   memset( &action, 0, sizeof( action ) ) ;
   memset( &timer, 0, sizeof( timer ) ) ;
 
   Wrd_t usec, sec ;
   Fptr_t wordptr ;
 
-  chk( 3 ) ;
   it_handler = (Fptr_t) pop() ;
   usec = pop() ;
   sec = pop() ;
