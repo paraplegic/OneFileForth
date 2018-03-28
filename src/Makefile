@@ -30,7 +30,7 @@ $(OUT):
 $(OUT)/off:	$(OUT) $(SRC)
 	@echo "OSTYPE is $(OSTYPE)"
 	@echo "Building for $(OSTYPE)"
-	$(CC) $(CCOPT) -o $@ $(FAST) $(LDOPTS) $(SRC) 
+	$(CC) $(CCOPT) -o $@ $(FAST) $(SRC) $(LDOPTS) 
 	size $@
 
 $(OUT)/offorth:	$(SRC)
@@ -47,6 +47,7 @@ clean:
 	rm -rf *.list
 	rm -rf cscope.out
 	rm -rf load.map
+	rm -rf *.s
 
 realclean:	clean
 	rm -rf $(OUT)/* 

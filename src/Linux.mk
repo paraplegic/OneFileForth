@@ -1,4 +1,4 @@
-LDOPTS:=-ldl 
+LDOPTS:=-ldl
 MAP:=-Wl,--print-map
 CC:=gcc
 

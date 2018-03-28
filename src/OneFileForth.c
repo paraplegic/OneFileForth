@@ -83,7 +83,8 @@
 
 // word size will be derived from the architecture
 // compiler predefines, and inferred as follows:
-#if defined (avr) || defined (AVR)
+#if defined (avr) || defined (AVR) || defined( __riscv )
+#define NATIVE
 #include <stdint.h>
 #define _WORDSIZE 	2
 #ifndef NULL
@@ -91,7 +92,7 @@
 #endif
 #endif
 
-#if defined (i386) || defined (__arm__) || defined (AVR32) || defined(powerpc)
+#if defined (i386) || defined (__arm__) || defined (AVR32) || defined(powerpc) || defined( __riscv )
 #define _WORDSIZE 	4
 #endif
 
@@ -104,15 +105,20 @@
 // upon system calls including read()/write() to exist.
 #ifdef NATIVE
 #undef HOSTED
+#define sz_FLASH	8192		// cells
+#define FLASH_INIT_VAL	0xdead
 #endif
 
 #define sz_INBUF		127		// bytes
 #define sz_STACK		32		// cells
-#define sz_FLASH		16384		// cells
 #define sz_ColonDefs 		1024		// # entries
 #define sz_TMPBUFFER		2048		// total buffer queue
 #define nm_TMPBUFFER		8		// number of buffers
 
+#ifndef sz_FLASH
+#define sz_FLASH	16384		// cells
+#define FLASH_INIT_VAL	0xdeadbeef
+#endif
 
 #ifdef HOSTED
 #include <stdlib.h>
@@ -694,7 +700,7 @@ Dict_t Primitives[] = {
 Dict_t Colon_Defs[sz_ColonDefs] ;
 Cell_t n_ColonDefs = 0 ;
 
-Cell_t flash[sz_FLASH] = { 0xdeadbeef } ;
+Cell_t flash[sz_FLASH] = { FLASH_INIT_VAL } ;
 Cell_t *flash_mem = StartOf( flash ) ;
 
 // Some global state variables (see forget();)
@@ -920,10 +926,10 @@ void q_reset(){
   promptVal = 0 ; 
 
   tos = (Cell_t *) StartOf( stack ) ; 
-  *tos = 0xdeadbeef ;
+  *tos = FLASH_INIT_VAL ;
 
   rtos = (Cell_t *) StartOf( rstack ) ;
-  *rtos = 0xdeadbeef ;
+  *rtos = FLASH_INIT_VAL ;
 
   error_code = err_OK ;
   state = state_Interactive ;
@@ -987,7 +993,7 @@ int uart_can_recv( void )
 
 void uart_init(void)
 {
-   GET32( x_UARTDR );
+   // GET32( x_UARTDR );
    return;
 }
 
@@ -1339,7 +1345,7 @@ Wrd_t str_format_ap( Str_t dst, Wrd_t dlen, Str_t fmt, va_list ap ){
   va_list ap2 ;
   Str_t p_fmt, p_dst, p_end, str ;
   Byt_t ch ;
-  Wrd_t cell, rv ;
+  Wrd_t cell ;
 
   p_end = dst + dlen ;
   p_dst = dst ;
