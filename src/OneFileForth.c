@@ -35,7 +35,7 @@
 
 #define MAJOR		"00"
 #define MINOR		"01"
-#define REVISION	"65"
+#define REVISION	"66"
 
 #include <stdarg.h>
 #include <stdint.h>
@@ -907,7 +907,8 @@ Byt_t  found_eol = (Byt_t) 0 ;
 
 // reset never forgets ...
 // forget does that (see below).
-void q_reset(){
+void q_reset()
+{
 
 #ifdef HOSTED
   sigval = 0 ;
@@ -997,12 +998,14 @@ void uart_init(void)
    return;
 }
 
-int notmain( void ){
+int notmain( void )
+{
   uart_init();
 
 #else // NATIVE vs HOSTED ... 
 
-int main( int argc, char **argv ){
+int main( int argc, char **argv )
+{
 
 #endif
 
@@ -1037,7 +1040,8 @@ int main( int argc, char **argv ){
   return 0 ;
 }
 
-Wrd_t ch_matches( Byt_t ch, Str_t anyOf ){
+Wrd_t ch_matches( Byt_t ch, Str_t anyOf )
+{
   Str_t  p ;
 
   p = (Str_t) StartOf( anyOf ) ;
@@ -1049,7 +1053,8 @@ Wrd_t ch_matches( Byt_t ch, Str_t anyOf ){
   return 0 ; 
 }
 
-Byt_t ch_tolower( Byt_t b ){
+Byt_t ch_tolower( Byt_t b )
+{
  if( b <= 'Z' && b >= 'A' ){
   return b ^ 0x20 ;
  }
@@ -1089,7 +1094,8 @@ Wrd_t utf8_encoder( Wrd_t ch, Str_t buf, Wrd_t len )
   return( 0 ) ;
 }
 
-Wrd_t ch_index( Str_t str, Byt_t c ){
+Wrd_t ch_index( Str_t str, Byt_t c )
+{
   Byt_t *p, *start ; 
 
   p = start = (Byt_t *) StartOf( str ) ;
@@ -1163,7 +1169,8 @@ Str_t str_token( Input_t *input )
   } while( 1 ) ;
 }
 
-Wrd_t str_match( Str_t a, Str_t b, Wrd_t len ){
+Wrd_t str_match( Str_t a, Str_t b, Wrd_t len )
+{
   int8_t i ;
 
   if( (str_length( a ) == len) && (str_length( b ) == len) ){
@@ -1177,7 +1184,8 @@ Wrd_t str_match( Str_t a, Str_t b, Wrd_t len ){
   return 0 ;
 }
 
-Wrd_t str_length( Str_t str ){
+Wrd_t str_length( Str_t str )
+{
   Str_t  p ; 
   Wrd_t ret = 0 ;
 
@@ -1190,7 +1198,8 @@ Wrd_t str_length( Str_t str ){
   return ret ; 
 }
 
-Wrd_t str_literal( Str_t tkn, Wrd_t radix ){
+Wrd_t str_literal( Str_t tkn, Wrd_t radix )
+{
   Wrd_t  ret, sign, digit, base ;
   Str_t p ;
 
@@ -1240,7 +1249,8 @@ Wrd_t str_literal( Str_t tkn, Wrd_t radix ){
    return ret ;
 }
 
-void str_set( Str_t dst, Byt_t dat, Wrd_t len ){
+void str_set( Str_t dst, Byt_t dat, Wrd_t len )
+{
   Str_t ptr ;
 
   for( ptr = dst ; ptr - dst < len ; ptr++ ){
@@ -1248,7 +1258,8 @@ void str_set( Str_t dst, Byt_t dat, Wrd_t len ){
   } 
 }
 
-Wrd_t str_copy( Str_t dst, Str_t src, Wrd_t len ){
+Wrd_t str_copy( Str_t dst, Str_t src, Wrd_t len )
+{
   Wrd_t i ;
   Str_t from, to ; 
 
@@ -1260,7 +1271,8 @@ Wrd_t str_copy( Str_t dst, Str_t src, Wrd_t len ){
   return i ;
 }
 
-Wrd_t str_utoa( uByt_t *dst, Wrd_t dlen, Cell_t val, Wrd_t radix ){
+Wrd_t str_utoa( uByt_t *dst, Wrd_t dlen, Cell_t val, Wrd_t radix )
+{
 
   uCell_t n, i, dig ;
   uByt_t *p, *q, buf[30] ;
@@ -1289,7 +1301,8 @@ Wrd_t str_utoa( uByt_t *dst, Wrd_t dlen, Cell_t val, Wrd_t radix ){
 
   return n ;
 }
-Wrd_t str_ntoa( Str_t dst, Wrd_t dlen, Cell_t val, Wrd_t radix, Wrd_t isSigned ){
+Wrd_t str_ntoa( Str_t dst, Wrd_t dlen, Cell_t val, Wrd_t radix, Wrd_t isSigned )
+{
   Wrd_t i, sign, n ;
   Byt_t c, buf[30] ;
   Str_t p ;
@@ -1331,7 +1344,8 @@ Wrd_t str_ntoa( Str_t dst, Wrd_t dlen, Cell_t val, Wrd_t radix, Wrd_t isSigned )
   return n ;
 } 
 
-Wrd_t str_format( Str_t dst, Wrd_t dlen, Str_t fmt, ... ){
+Wrd_t str_format( Str_t dst, Wrd_t dlen, Str_t fmt, ... )
+{
   Wrd_t rv ;
   va_list ap ;
 
@@ -1341,7 +1355,8 @@ Wrd_t str_format( Str_t dst, Wrd_t dlen, Str_t fmt, ... ){
   return rv ;
 }
     
-Wrd_t str_format_ap( Str_t dst, Wrd_t dlen, Str_t fmt, va_list ap ){
+Wrd_t str_format_ap( Str_t dst, Wrd_t dlen, Str_t fmt, va_list ap )
+{
   va_list ap2 ;
   Str_t p_fmt, p_dst, p_end, str ;
   Byt_t ch ;
@@ -1399,7 +1414,8 @@ Wrd_t str_format_ap( Str_t dst, Wrd_t dlen, Str_t fmt, va_list ap ){
   return p_dst - dst - 1 ;
 }
 
-Str_t str_uncache( Str_t tag ){
+Str_t str_uncache( Str_t tag )
+{
   Cell_t len ;
 
   len = str_length( tag ) + 1 ;
@@ -1407,7 +1423,8 @@ Str_t str_uncache( Str_t tag ){
   return (Str_t) String_Data ;
 }
 
-Str_t str_cache( Str_t s ){
+Str_t str_cache( Str_t s )
+{
 
   Cell_t len ;
 
@@ -1426,7 +1443,8 @@ Str_t str_seal( void )
   return (Str_t) String_Data ;
 }
 
-Dict_t *lookup( Str_t tkn ){
+Dict_t *lookup( Str_t tkn )
+{
   Dict_t *p ;
   Cell_t  i ;
 
@@ -1466,7 +1484,8 @@ Dict_t *lookup( Str_t tkn ){
     dictionary structure above ...
 */
 
-void quit(){
+void quit()
+{
   Str_t tkn ;
   Dict_t *dp ;
 
@@ -1494,7 +1513,8 @@ void quit(){
   } // *ever*
 } // *quit*
 
-void banner(){
+void banner()
+{
   Wrd_t UNUSED( n );
 
 #ifdef HOSTED
@@ -1512,13 +1532,15 @@ void tracker( const char *fun, int line )
   n = fmt_out( "-- %s: %d\n", fun, line ) ;
 }
 
-void prompt(){
+void prompt()
+{
   if( INPUT == 0 ){
     outp( OUTPUT, (Str_t) promptStr[promptVal], 3 ) ;
   }
 }
 
-void add(){
+void add()
+{
   register Cell_t n ;
 
   chk( 2 ) ;
@@ -1526,7 +1548,8 @@ void add(){
   *tos += n ;
 }
 
-void subt(){
+void subt()
+{
   register Cell_t n ;
 
   chk( 2 ) ;
@@ -1534,7 +1557,8 @@ void subt(){
   *tos -=  n ; 
 }
 
-void mult(){
+void mult()
+{
   register Cell_t n ;
 
   chk( 2 ) ;
@@ -1542,7 +1566,8 @@ void mult(){
   *tos *= n ;
 }
 
-void exponent(){
+void exponent()
+{
   register Cell_t n, exp ;
 
   chk( 2 ) ;
@@ -1554,7 +1579,8 @@ void exponent(){
   }
 }
 
-void divide(){
+void divide()
+{
   register Cell_t n ; 
  
   chk( 2 ) ;
@@ -1566,7 +1592,8 @@ void divide(){
   *tos /= n ; 
 }
 
-void modulo(){
+void modulo()
+{
   register Cell_t n ; 
  
   chk( 2 ) ;
@@ -1583,7 +1610,8 @@ void absolute() // -n -- n
   *tos = Abs( *tos ) ;
 }
 
-void dotS(){
+void dotS()
+{
   Cell_t i, num ;
 
   chk( 0 ) ; 
@@ -1595,7 +1623,8 @@ void dotS(){
   }
 }
 
-void dot(){
+void dot()
+{
   Wrd_t n, val ;
   Str_t buf = tb_get( TB );
 
@@ -1605,7 +1634,8 @@ void dot(){
   outp( OUTPUT, buf, n ) ;
 }
 
-void udot(){
+void udot()
+{
   Wrd_t UNUSED( n );
   Str_t buf = tb_get( TB );
 
@@ -1614,13 +1644,15 @@ void udot(){
   outp( OUTPUT, buf, n ) ;
 }
 
-void bye(){
+void bye()
+{
 #ifdef HOSTED
   exit( error_code ) ;
 #endif
 }
 
-void words(){
+void words()
+{
   Dict_t *p ;
   Cell_t i, llen, wlen, nwords ;
 
@@ -1632,7 +1664,7 @@ void words(){
     for( i = n_ColonDefs - 1 ; i > -1 ; i-- ){
       p = &Colon_Defs[i] ;
       wlen = str_length( p ->nfa ) ;
-      if( (llen + wlen) > 79 )
+      if( (llen + wlen) > 72 )
       {
 	fmt_out( "\n" );
 	llen = 0 ;
@@ -1647,7 +1679,7 @@ void words(){
   while( p ->nfa )
   {
     wlen = str_length( p ->nfa ) ;
-    if( (llen + wlen) > 79 )
+    if( (llen + wlen) > 72 )
     {
        fmt_out( "\n" );
        llen = 0 ;
@@ -1660,7 +1692,8 @@ void words(){
   fmt_out( "\n -- %d words.\n", nwords );
 }
 
-Wrd_t checkstack( Wrd_t n, Str_t fun ){
+Wrd_t checkstack( Wrd_t n, Str_t fun )
+{
   Wrd_t UNUSED( x ), d ;
 
   if( n > 0 ) {
@@ -1689,73 +1722,86 @@ Wrd_t checkstack( Wrd_t n, Str_t fun ){
   return 1 ;
 }
 
-void unresolved(){
+void unresolved()
+{
   throw( err_UnResolved ) ;
 }
 
-void fwd_mark(){
+void fwd_mark()
+{
   push( (Cell_t) Here ) ;
   push( (Cell_t) lookup( "unresolved" ) ) ;
   comma() ;
 }
 
-void fwd_resolve(){
+void fwd_resolve()
+{
   Cell_t *p ;
 
   p = (Cell_t *) pop() ;
   *p = (Cell_t) Here ;
 }
 
-void bkw_mark(){
+void bkw_mark()
+{
   push( (Cell_t) Here ) ;
 }
 
-void bkw_resolve(){
+void bkw_resolve()
+{
   comma() ;
 }
 
-void  begin() {
+void  begin()
+{
   bkw_mark();
 }         
   
-void  again() {
+void  again()
+{
   push( (Cell_t) lookup( "branch" ) ) ;
   comma() ;
   bkw_resolve();
 }
 
-void  While() {
+void  While()
+{
   push( (Cell_t) lookup( "?branch" ) );
   comma() ;
   fwd_mark();
   swap();
 }
 
-void  Repeat() {
+void  Repeat()
+{
   push( (Cell_t) lookup( "branch" ) );
   comma() ;
   bkw_resolve();
   fwd_resolve();
 }
 
-void  Leave(){
+void  Leave()
+{
   if( rtos > rstack )
     *rtos = 0 ; 
 }
 
-void  Until(){
+void  Until()
+{
   push( (Cell_t) lookup( "?branch" ) );
   comma() ;
   bkw_resolve() ;
 }
 
-void  If(){
+void  If()
+{
   push( (Cell_t) lookup( "?branch" ) ) ;
   comma() ;
   fwd_mark() ;
 }
 
-void Else(){
+void Else()
+{
   push( (Cell_t) lookup( "branch" ) ) ;
   comma();
   fwd_mark() ;
@@ -1763,11 +1809,13 @@ void Else(){
   fwd_resolve() ;
 }
 
-void Then(){
+void Then()
+{
   fwd_resolve() ;
 }
 
-void  lt() {
+void  lt()
+{
   register Cell_t n ;
 
   chk( 2 ) ; 
@@ -1775,7 +1823,8 @@ void  lt() {
   *tos = (*tos < n) ? 1 : 0 ;
 }
 
-void  gt() {
+void  gt()
+{
   register Cell_t n ;
 
   chk( 2 ) ; 
@@ -1783,7 +1832,8 @@ void  gt() {
   *tos = (*tos > n) ? 1 : 0 ;
 }
 
-void  ge() {
+void  ge()
+{
   register Cell_t n ;
   
   chk( 2 ) ; 
@@ -1791,7 +1841,8 @@ void  ge() {
   *tos = (*tos >= n) ? 1 : 0 ;
 }
 
-void  ne() {
+void  ne()
+{
   register Cell_t n ;
   
   chk( 2 ) ; 
@@ -1799,7 +1850,8 @@ void  ne() {
   *tos = (*tos != n) ? 1 : 0 ;
 }
 
-void  eq() {
+void  eq()
+{
   register Cell_t n ;
 
   chk( 2 ) ; 
@@ -1807,7 +1859,8 @@ void  eq() {
   *tos = (*tos == n) ? 1 : 0 ;
 }
 
-void  le() {
+void  le()
+{
   register Cell_t n ;
 
   chk( 2 ) ; 
@@ -1815,7 +1868,8 @@ void  le() {
   *tos = (*tos <= n) ? 1 : 0 ;
 }
 
-void And(){
+void And()
+{
   register Cell_t n ;
 
   chk( 2 ) ; 
@@ -1823,7 +1877,8 @@ void And(){
   *tos &= n ;
 }
 
-void and(){
+void and()
+{
   register Cell_t n ;
 
   chk( 2 ) ; 
@@ -1831,7 +1886,8 @@ void and(){
   *tos = *tos && n ;
 }
 
-void or(){
+void or()
+{
   register Cell_t n ;
 
   chk( 2 ) ; 
@@ -1839,7 +1895,8 @@ void or(){
   *tos |= n ;
 }
 
-void xor(){
+void xor()
+{
   register Cell_t n ;
 
   chk( 2 ) ; 
@@ -1847,13 +1904,15 @@ void xor(){
   *tos ^= n ;
 }
 
-void not(){
+void not()
+{
 
   chk( 1 ) ; 
   *tos = ~(*tos) ;
 }
 
-void q_branch(){
+void q_branch()
+{
   Cell_t *ptr ;
 
   ptr = (Cell_t *) rpop() ;		// grab next word pointer
@@ -1864,28 +1923,32 @@ void q_branch(){
   rpush( *ptr ) ;				// else branch to ptr ... 
 }
 
-void branch(){
+void branch()
+{
   Cell_t *x ;
 
   x = (Cell_t *) rpop() ;		// always branch to next ... 
   rpush( *x ) ;
 }
 
-void rdepth(){
+void rdepth()
+{
   Cell_t d ;
 
   d = rtos - StartOf( rstack ) ;
   push( d ) ; 
 }
 
-void depth(){
+void depth()
+{
   Cell_t d ;
 
   d = tos - StartOf( stack ) ;
   push( d ) ; 
 }
 
-void dupe(){ // n1 -- n1 n1
+void dupe() // n1 -- n1 n1
+{
   register Cell_t n ;
 
   chk( 1 ) ; 
@@ -1893,7 +1956,8 @@ void dupe(){ // n1 -- n1 n1
   push( n ) ;
 }
 
-void qdupe(){ // n1 != 0 ? -- n1 n1 : n1
+void qdupe() // n1 != 0 ? -- n1 n1 : n1
+{ 
   register Cell_t n ;
 
   chk( 1 ) ; 
@@ -1904,7 +1968,8 @@ void qdupe(){ // n1 != 0 ? -- n1 n1 : n1
   }
 }
 
-void rot(){ // n1 n2 n3 -- n2 n3 n1
+void rot() // n1 n2 n3 -- n2 n3 n1
+{
   register Cell_t n ;
 
   chk( 3 ) ;
@@ -1915,7 +1980,8 @@ void rot(){ // n1 n2 n3 -- n2 n3 n1
   *tos = n ;
 }
 
-void nip(){ // n1 n2 -- n2
+void nip() // n1 n2 -- n2
+{
 
   chk( 2 ) ;
 
@@ -1923,7 +1989,8 @@ void nip(){ // n1 n2 -- n2
   drop() ;
 }
 
-void tuck(){ // n1 n2 -- n2 n1 n2
+void tuck() // n1 n2 -- n2 n1 n2
+{
 
   chk( 2 ) ;
 
@@ -1932,13 +1999,15 @@ void tuck(){ // n1 n2 -- n2 n1 n2
   swap() ;
 }
 
-void drop(){
+void drop()
+{
   chk( 1 ) ; 
 
   tos-- ;
 }
 
-void over(){ // n1 n2 -- n1 n2 n1 
+void over() // n1 n2 -- n1 n2 n1 
+{
   register Cell_t n ;
 
   chk( 2 ) ; 
@@ -1946,17 +2015,20 @@ void over(){ // n1 n2 -- n1 n2 n1
   push( n ) ;
 }
 
-void Rto(){
-  push( upop() ) ;
+void Rto()
+{
+  push( rpop() ) ;
 }
 
-void toR(){
+void toR()
+{
 
   chk( 1 ) ;
-  upush( pop() ) ;
+  rpush( pop() ) ;
 }
 
-void swap(){
+void swap()
+{
   register Cell_t t ;
 
   chk( 2 ) ;
@@ -1965,7 +2037,8 @@ void swap(){
   nos = t ;
 }
 
-void pick(){
+void pick()
+{
   Wrd_t ix ; 
   Cell_t tval ;
   chk( 1 ) ;
@@ -1979,7 +2052,8 @@ void pick(){
   throw( err_StackUdr ) ;
 }
 
-void Eof(){
+void Eof()
+{
 #ifdef HOSTED
   if( in_This > 0 )
   {
@@ -2002,16 +2076,19 @@ void Eof(){
 #endif
 }
 
-void cells(){
+void cells()
+{
   chk( 1 ) ;
   *tos *= sizeof( Cell_t ) ;
 }
 
-void cellsize(){
+void cellsize()
+{
   push( sizeof( Cell_t ) ) ;
 }
 
-void err_throw( Str_t whence, Wrd_t line, Err_t err ){
+void err_throw( Str_t whence, Wrd_t line, Err_t err )
+{
   Str_t buf = tb_get( TB ) ;
 
   str_format( buf, tb_bufsize( TB ), "%s():[%d]", whence, line ) ;
@@ -2019,7 +2096,8 @@ void err_throw( Str_t whence, Wrd_t line, Err_t err ){
   error_code = err ;
 }
 
-void catch(){
+void catch()
+{
   Wrd_t UNUSED( sz );
   Input_t *input = &InputStack[ in_This ];
 
@@ -2099,7 +2177,8 @@ void catch(){
 
 }
 
-void wrd_fetch(){
+void wrd_fetch()
+{
   register Cell_t *p ;
 
   chk( 1 ) ; 
@@ -2111,7 +2190,8 @@ void wrd_fetch(){
   push( *p ) ;
 }
 
-void wrd_store(){
+void wrd_store()
+{
   register Cell_t *p, n ;
 
   chk( 2 ) ; 
@@ -2124,7 +2204,8 @@ void wrd_store(){
   *p = n ;
 }
 
-void reg_fetch(){
+void reg_fetch()
+{
   volatile register uWrd_t *p ;
 
   chk( 2 ) ; 
@@ -2136,7 +2217,8 @@ void reg_fetch(){
   push( *p ) ;
 }
 
-void reg_store(){
+void reg_store()
+{
   volatile register uWrd_t *p ; 
   register Cell_t n ;
 
@@ -2150,7 +2232,8 @@ void reg_store(){
   *p = n ;
 }
 
-void crg_fetch(){
+void crg_fetch()
+{
   volatile register Byt_t *p ;
 
   chk( 1 ) ; 
@@ -2162,7 +2245,8 @@ void crg_fetch(){
   push( *p & 0xff ) ;
 }
 
-void crg_store(){
+void crg_store()
+{
   volatile register Byt_t *p ; 
   register Cell_t n ;
 
@@ -2176,7 +2260,8 @@ void crg_store(){
   *p = n & 0xff ;
 }
 
-void hlf_fetch(){
+void hlf_fetch()
+{
   register Hlf_t *p ;
 
   chk( 1 ) ; 
@@ -2188,7 +2273,8 @@ void hlf_fetch(){
   push( *p & _HALFMASK ) ;
 }
 
-void hlf_store(){
+void hlf_store()
+{
   volatile register Hlf_t *p ; 
   register Cell_t n ;
 
@@ -2202,7 +2288,8 @@ void hlf_store(){
   *p = n & _HALFMASK ;
 }
 
-void byt_fetch(){
+void byt_fetch()
+{
   register Byt_t *p ;
 
   chk( 1 ) ; 
@@ -2214,7 +2301,8 @@ void byt_fetch(){
   push( *p & 0xff) ;
 }
 
-void byt_store(){
+void byt_store()
+{
   Byt_t *p ; 
   Cell_t n ;
 
@@ -2228,7 +2316,8 @@ void byt_store(){
   *p = (Byt_t) (n & 0xff) ;
 }
  
-void lft_shift(){
+void lft_shift()
+{
   register Cell_t n ;
 
   chk( 2 ) ;
@@ -2236,7 +2325,8 @@ void lft_shift(){
   *tos <<= n ; 
 }
 
-void rgt_shift(){
+void rgt_shift()
+{
   register Cell_t n ;
 
   chk( 2 ) ;
@@ -2244,8 +2334,8 @@ void rgt_shift(){
   *tos >>= n ; 
 }
 
-void quote(){
-
+void quote()
+{
   push( (Cell_t) str_delimited( "\"" ) ) ;
   if( state == state_Compiling ){
     ssave() ;
@@ -2256,8 +2346,8 @@ void quote(){
 
 }
 
-void dotquote(){
-
+void dotquote()
+{
   quote() ;
   if( state == state_Compiling ){
     push( (Cell_t) lookup( "type" ) ) ;
@@ -2267,7 +2357,8 @@ void dotquote(){
   type() ;
 }
 
-void comment(){
+void comment()
+{
   push( (Cell_t) str_delimited( ")" ) ) ;
   drop();
 }
@@ -2281,12 +2372,14 @@ void flushtoeol()
 
 }
 
-void dotcomment(){
+void dotcomment()
+{
   push( (Cell_t) str_delimited( ")" ) ) ;
   type() ;
 }
 
-Str_t str_delimited( Str_t terminator ){
+Str_t str_delimited( Str_t terminator )
+{
   Str_t tkn, ptr, ret ; 
   Wrd_t len ;
 
@@ -2309,7 +2402,8 @@ Str_t str_delimited( Str_t terminator ){
   return( ret ) ;
 }
 
-void count(){
+void count()
+{
   Wrd_t len ;
 
   chk( 1 ) ; 
@@ -2317,7 +2411,8 @@ void count(){
   push( (Cell_t) len ) ;
 }
 
-void ssave(){
+void ssave()
+{
   Str_t str ; 
 
   chk( 1 ) ;
@@ -2325,7 +2420,8 @@ void ssave(){
   push( (Cell_t) str_cache( str ) ) ;
 }
 
-void unssave(){
+void unssave()
+{
   Byt_t *tag ;
 
   chk( 1 ) ;
@@ -2342,19 +2438,22 @@ void nBufs()
   push( tb_nbufs( TB ) ) ;
 }
 
-void Buf(){
+void Buf()
+{
   push( (Cell_t) tb_get( TB ) ) ;
   push( (Cell_t) tb_bufsize( TB ) ) ;
 }
 
-void pad(){
+void pad()
+{
   here() ;
   push( 20 ) ; 
   cells() ; 
   add() ; 
 }
 
-void cmove(){  // ( n dst src -- )
+void cmove()  // ( n dst src -- )
+{
   Cell_t len ; 
   Str_t src, dst ;
 
@@ -2364,14 +2463,16 @@ void cmove(){  // ( n dst src -- )
   str_copy( dst, src, len ) ;
 }
 
-void word(){ 
+void word()
+{ 
   Str_t tkn ;
  
   do { tkn = str_token( &InputStack[ in_This ] ) ; } while ( isNul( tkn ) ) ;
   push( (Cell_t) tkn ) ;
 }
 
-void ascii(){ 
+void ascii()
+{ 
   Str_t p ;
 
   word() ;
@@ -2385,7 +2486,8 @@ void ascii(){
   }
 }
 
-void q_key(){
+void q_key()
+{
 #ifdef HOSTED
 #if !defined( __WIN32__ )
   Wrd_t  rv ;
@@ -2403,7 +2505,8 @@ void q_key(){
 #endif
 }
 
-void key(){
+void key()
+{
 #ifdef HOSTED
 #if !defined( __WIN32__ )
 
@@ -2433,7 +2536,8 @@ void key(){
 #endif
 }
 
-void emit(){
+void emit()
+{
   Wrd_t nbytes ;
   Byt_t buf[10] ;
   chk( 1 ) ; 
@@ -2442,7 +2546,8 @@ void emit(){
   outp( OUTPUT, (Str_t) buf, nbytes ) ;
 }
 
-void type(){
+void type()
+{
   Str_t str ;
 
   chk( 1 ) ; 
@@ -2450,11 +2555,13 @@ void type(){
   outp( OUTPUT, (Str_t) str, str_length( str ) ) ;
 }
 
-void cr(){
+void cr()
+{
   outp( OUTPUT, (Str_t) "\n", 1 ) ;
 }
 
-void dp(){
+void dp()
+{
   push( (Cell_t) DictPtr ) ;
 }
 
@@ -2478,11 +2585,13 @@ void here()
   push( (Cell_t) Here ) ;
 }
 
-void freespace(){
+void freespace()
+{
   push( (Cell_t) ((Str_t) String_Data - (Str_t) Here) ) ;
 }
 
-void comma(){
+void comma()
+{
   Cell_t space ;
 
   chk( 1 ) ; 
@@ -2496,18 +2605,21 @@ void comma(){
   }
 }
 
-void doLiteral(){
+void doLiteral()
+{
   Cell_t *p ; 
   p = (Cell_t *) rpop() ;
   push( *(p++) ) ;
   rpush( (Cell_t) p ) ;
 }
 
-void pushPfa(){
+void pushPfa()
+{
   push( rpop() ) ;
 }
 
-void does(){
+void does()
+{
   Dict_t *dp ; 
   Cell_t **p ;
 
@@ -2547,7 +2659,8 @@ void does(){
   }
 }
 
-void allot(){
+void allot()
+{
   Cell_t n ;
 
   chk( 1 ) ;
@@ -2555,7 +2668,8 @@ void allot(){
   Here += n ; 
 }
 
-void create(){
+void create()
+{
   word();
   lambda() ;
 }
@@ -2569,17 +2683,19 @@ void lambda()
   dp = &Colon_Defs[n_ColonDefs++] ;
 
   dp ->nfa = str_cache( tag ) ; // cache tag ..
-  dp ->cfa = pushPfa ;			// default behaviour (like variable)
-  dp ->pfa = Here ;				// pfa points to current 
+  dp ->cfa = pushPfa ;		// default behaviour (like variable)
+  dp ->pfa = Here ;		// pfa points to current 
 
 }
 
-void doConstant(){
+void doConstant()
+{
   push( rpop() ) ;
   wrd_fetch() ;
 }
 
-void constant(){
+void constant()
+{
   create() ;
   comma() ;
 
@@ -2587,19 +2703,22 @@ void constant(){
   dp ->cfa = doConstant ;
 }
 
-void variable(){
+void variable()
+{
   create();
   push( 0 ) ; 
   comma() ;
 }
 
-void colon(){
+void colon()
+{
   state = state_Compiling ;
   create();
   compile() ; 
 }
 
-void compile(){
+void compile()
+{
   Dict_t *dp ;
   Str_t   tkn ; 
   Cell_t *save, value ;
@@ -2642,30 +2761,35 @@ void compile(){
   }
 }
 
-void pvState(){
+void pvState()
+{
   state = state_save ;
 }
 
-void imState(){
+void imState()
+{
   state_save = state ;
   state = state_Immediate ;
 }
 
-void normal(){
+void normal()
+{
   Dict_t *dp ;
 
   dp = &Colon_Defs[n_ColonDefs-1] ;
   dp ->flg = Normal ;
 }
 
-void immediate(){
+void immediate()
+{
   Dict_t *dp ;
 
   dp = &Colon_Defs[n_ColonDefs-1] ;
   dp ->flg = Immediate ;
 }
 
-void call(){
+void call()
+{
   Cptr_t fun ;
  
   chk( 1 ) ; 
@@ -2673,7 +2797,8 @@ void call(){
   push( (*fun)() ) ;
 }
 
-void tracing( Dict_t *dp ){
+void tracing( Dict_t *dp )
+{
 
   dotS() ;
   put_str( "\t\t" ) ;
@@ -2686,7 +2811,8 @@ void tracing( Dict_t *dp ){
   cr() ;
 }
 
-void execute(){
+void execute()
+{
   Dict_t *dp ; 
 
   chk( 1 ) ; 
@@ -2707,7 +2833,8 @@ void execute(){
   }
 }
 
-void doColon(){
+void doColon()
+{
   Dict_t *dp ;
   Cell_t **p ;
   State_t save ;
@@ -2729,7 +2856,8 @@ void doColon(){
 
 }
 
-void semicolon(){
+void semicolon()
+{
 
   if( state != state_Compiling ){
     throw( err_BadState );
@@ -2741,7 +2869,8 @@ void semicolon(){
   state = state_Interactive ;
 }
 
-void tick(){
+void tick()
+{
   Str_t tkn ; 
 
   chk( 0 ) ; 
@@ -2760,7 +2889,8 @@ void tick(){
   }
 }
 
-void nfa(){
+void nfa()
+{
   Dict_t *dp ;
 
   chk( 1 ) ; 
@@ -2768,7 +2898,8 @@ void nfa(){
   push( (Cell_t) dp ->nfa ) ;
 }
 
-void cfa(){
+void cfa()
+{
   Dict_t *dp ;
 
   chk( 1 ) ; 
@@ -2776,7 +2907,8 @@ void cfa(){
   push( (Cell_t) dp ->cfa ) ;
 }
 
-void pfa(){
+void pfa()
+{
   Dict_t *dp ;
 
   chk( 1 ) ; 
@@ -2784,30 +2916,36 @@ void pfa(){
   push( (Cell_t) dp ->pfa ) ;
 }
 
-void decimal(){
+void decimal()
+{
   Base = 10 ; 
 }
 
-void hex(){
+void hex()
+{
   Base = 16 ; 
 }
 
-void sigvar(){
+void sigvar()
+{
 #ifdef HOSTED
   push( (Cell_t) &sigval ); 
 #endif
 }
 
-void errvar(){
+void errvar()
+{
   push( (Cell_t) &error_code ); 
 }
 
-void errval(){
+void errval()
+{
   errvar();
   wrd_fetch();
 }
 
-void errstr(){
+void errstr()
+{
 
   register Cell_t err = pop() ;
 
@@ -2823,15 +2961,18 @@ void errmax()
   push( err_Undefined ) ;
 }
 
-void trace(){
+void trace()
+{
   push( (Cell_t) &Trace ); 
 }
 
-void base(){
+void base()
+{
   push( (Cell_t) &Base ); 
 }
 
-void resetter(){
+void resetter()
+{
   put_str( "-- Warm start." ) ; cr();
   q_reset() ;
 #ifdef HOSTED
@@ -2850,7 +2991,8 @@ void cold()
 #endif
 }
 
-void see(){
+void see()
+{
   register Dict_t *p, *r ; 
   Cell_t *ptr, n ; 
 
@@ -2924,7 +3066,8 @@ Wrd_t fmt_out( Str_t fmt, ... )
   return nx ;
 }
 
-Wrd_t put_str( Str_t s ){
+Wrd_t put_str( Str_t s )
+{
   register Cell_t n = 0;
 
   if( !isNul( s ) ){
@@ -2935,7 +3078,8 @@ Wrd_t put_str( Str_t s ){
   return n ;
 }
 
-Wrd_t get_str( Wrd_t fd, Str_t buf, Wrd_t len ){
+Wrd_t get_str( Wrd_t fd, Str_t buf, Wrd_t len )
+{
   Byt_t ch ;
   Wrd_t i, crlf = 0 ;
 
@@ -2963,7 +3107,8 @@ Wrd_t get_str( Wrd_t fd, Str_t buf, Wrd_t len ){
   return i ;
 }
 
-Wrd_t io_cbreak( int fd ){
+Wrd_t io_cbreak( int fd )
+{
 #if defined( HOSTED ) 
 #if !defined(__WIN32__)
   static int inCbreak = v_Off ;
@@ -2993,7 +3138,8 @@ Wrd_t io_cbreak( int fd ){
 #endif
 }
 
-void waitrdy(){		/* ( fd secs usecs -- flag ) */
+void waitrdy() // fd secs usecs -- flag )
+{
 #ifdef HOSTED
 #if !defined( __WIN32__ )
   Wrd_t rv, fd, secs, usecs ;
@@ -3018,7 +3164,8 @@ void waitrdy(){		/* ( fd secs usecs -- flag ) */
 #endif
 }
 
-void sndtty(){ /* ( fd ptr -- nx ) */
+void sndtty() // ( fd ptr -- nx )
+{
   Str_t str ;
   Wrd_t fd, len ;
 
@@ -3031,7 +3178,8 @@ void sndtty(){ /* ( fd ptr -- nx ) */
 }
 
 #ifdef HOSTED
-void rcvtty(){	/* ( fd n -- buf n ) */
+void rcvtty() // ( fd n -- buf n )
+{
   Str_t buf ;
   Wrd_t n, nr, fd ;
 
@@ -3049,7 +3197,8 @@ void rcvtty(){	/* ( fd n -- buf n ) */
 }
 #endif
 
-void opentty(){	/* ( str -- fd ) */
+void opentty()	// ( str -- fd )
+{
 #ifdef HOSTED
 #if !defined(__WIN32__)
   Str_t fn ;
@@ -3080,7 +3229,8 @@ void opentty(){	/* ( str -- fd ) */
 #endif
 }
 
-void closetty(){
+void closetty() // ( fd -- )
+{
 #ifdef HOSTED
   chk( 1 ) ; 
   close( (Wrd_t) pop() ) ;
@@ -3153,7 +3303,8 @@ void filename()
 	push( (Str_t) InputStack[ in_This ].name ) ;
 }
 
-void outfile(){
+void outfile()
+{
 #ifdef HOSTED
   Str_t fn ;
   Cell_t fd, fexists ;
@@ -3177,7 +3328,8 @@ void outfile(){
 #endif
 }
 
-void closeout(){
+void closeout()
+{
 #ifdef HOSTED
   if( out_This > 0 ){
     close( OUTPUT ) ;
@@ -3186,7 +3338,8 @@ void closeout(){
 #endif
 }
 
-void isfile(){
+void isfile()
+{
 #ifdef HOSTED
   struct stat sbuf ;
   Cell_t rv ;
@@ -3204,7 +3357,8 @@ void isfile(){
 #endif
 }
 
-Wrd_t outp( Wrd_t fd, Str_t buf, Wrd_t len ){
+Wrd_t outp( Wrd_t fd, Str_t buf, Wrd_t len )
+{
 #ifdef HOSTED
   Wrd_t nx ;
 
@@ -3230,7 +3384,8 @@ Wrd_t outp( Wrd_t fd, Str_t buf, Wrd_t len ){
 #endif
 }
 
-Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len ){
+Wrd_t inp( Wrd_t fd, Str_t buf, Wrd_t len )
+{
 
 #ifdef HOSTED
   Wrd_t nx ;
@@ -3288,7 +3443,8 @@ Wrd_t write( Wrd_t fd, Str_t buf, Wrd_t len ) {}
 #endif
 
 #ifdef HOSTED 
-void qdlopen(){
+void qdlopen()
+{
   Str_t lib ;
   Opq_t opaque ;
 
@@ -3298,7 +3454,8 @@ void qdlopen(){
   push( (Cell_t) opaque ) ;
 }
 
-void qdlclose(){
+void qdlclose()
+{
   Opq_t opaque ;
 
   chk( 1 ) ; 
@@ -3306,7 +3463,8 @@ void qdlclose(){
   push( (Cell_t) dlclose( opaque ) ) ;
 }
 
-void qdlsym(){
+void qdlsym()
+{
   Str_t symbol ;
   Opq_t handle ;
 
@@ -3316,11 +3474,13 @@ void qdlsym(){
   push( (Cell_t) dlsym( handle, symbol ) ) ;
 }
 
-void qdlerror(){
+void qdlerror()
+{
   push( (Cell_t) dlerror() ) ;
 }
 
-void last_will(){
+void last_will()
+{
   Opq_t cmd ;
 
   chk( 1 ) ; 
@@ -3328,7 +3488,8 @@ void last_will(){
   atexit( cmd ) ;
 }
 
-void spinner(){
+void spinner()
+{
   static Wrd_t ix = 0 ;
   Byt_t f[4] = { '-', '\\', '|', '/' } ;
 
@@ -3340,7 +3501,8 @@ void spinner(){
 }
 #endif /* HOSTED */
 
-void callout(){
+void callout()
+{
   Cptr_t fun ;
   Cell_t i, n ;
   Cell_t args[10] ;
@@ -3389,7 +3551,8 @@ void callout(){
   return ;
 }
 
-void clkspersec(){
+void clkspersec()
+{
 #ifdef HOSTED
   push( CLOCKS_PER_SEC ) ;
 #else
@@ -3397,15 +3560,18 @@ void clkspersec(){
 #endif
 }
 
-void plusplus(){
+void plusplus()
+{
   *(tos) += 1; 
 }
 
-void minusminus(){
+void minusminus()
+{
   *(tos) -= 1; 
 }
 
-void utime(){
+void utime()
+{
 #ifdef HOSTED
   struct timeval tv ;
   uint64_t rv = 0ULL ;
@@ -3417,21 +3583,25 @@ void utime(){
 #endif
 }
 
-void ops(){
+void ops()
+{
    push( _ops ) ; 
 }
 
-void noops(){
+void noops()
+{
    _ops = 0 ; 
 }
 
-void qdo(){
+void qdo()
+{
   push( (Cell_t) lookup( "(do)" ) ) ; 
   comma() ;
   bkw_mark();
 }
 
-void do_do(){
+void do_do()
+{
   Cell_t nxt ;
 
   chk( 2 ) ;
@@ -3460,7 +3630,8 @@ void do_loop()
 
 }
 
-void loop(){
+void loop()
+{
 
   push( (Cell_t) lookup( "(loop)" ) );
   comma(); 
@@ -3471,11 +3642,13 @@ void loop(){
 
 }
 
-void do_I(){
+void do_I()
+{
   push( *rnos );
 }
 
-void ploop(){
+void ploop()
+{
 
   push( (Cell_t) lookup( "(+loop)" ) );
   comma(); 
@@ -3486,7 +3659,8 @@ void ploop(){
 
 }
 
-void do_ploop(){
+void do_ploop()
+{
   Cell_t nxt, inc ;
 
   inc = pop() ;
