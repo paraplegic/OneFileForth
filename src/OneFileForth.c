@@ -38,7 +38,7 @@
 #define REVISION	"67"
 
 #include <stdarg.h>
-#include <stdint.h>
+// #include <stdint.h>
 
 // trying to avoid this to allow
 // bare metal support ...
