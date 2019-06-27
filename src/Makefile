@@ -20,9 +20,16 @@ FAST=-D NOCHECK
 CCOPT=-g -O2
 OSTYPE != uname -s
 
-include $(OSTYPE).mk
+## mac hack ...
+ifeq ($(OSTYPE),)
+OSTYPE := Darwin
+endif
+
+## include $(OSTYPE).mk
 
 all:	$(OBJ)
+	@echo $(OSTYPE)
+
 
 $(OUT):
 	mkdir -p $(OUT)
