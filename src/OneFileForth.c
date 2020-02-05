@@ -2135,14 +2135,15 @@ void catch()
     case err_NoInput:
     default:
       chk( 0 ) ;
+		if ( quiet ) return ;
       sz = fmt_out( "%s (%d)\n", errors[error_code], error_code ) ;
       sz = fmt_out( "-- Error: code is %d.\n", error_code ) ;
-      sz = fmt_out( "-- Thrown by %s.\n", error_loc ) ;
-      if( error_code <= err_Undefined ){
-        sz = fmt_out( "%s (%d).\n", errors[error_code], error_code ) ;
-      }
-      if( error_code == err_NoInput ){
-        goto die ;
+  	   sz = fmt_out( "-- Thrown by %s.\n", error_loc ) ;
+  	   if( error_code <= err_Undefined ){
+  	      sz = fmt_out( "%s (%d).\n", errors[error_code], error_code ) ;
+  	   }
+  	   if( error_code == err_NoInput ){
+  	      goto die ;
       }
       goto reset;
   }
@@ -3811,6 +3812,8 @@ void dump()
 {
   Cell_t  **p ;
   Dict_t *dp ;
+
+  if( quiet ) return ;
 
   fmt_out( "-- Input File: %s Line: %d:\n", InputStack[ in_This ].name, InputStack[ in_This ].in_line ) ;
   fmt_out( "-- Forth Backtrace:\n" ) ;
